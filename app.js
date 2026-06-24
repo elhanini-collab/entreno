@@ -35,7 +35,20 @@ const todayISO = () => {
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 };
 const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MES_LARGO = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const fmtDate = (iso) => { const [y,m,dd] = iso.split("-"); return `${+dd} ${MES[+m-1]}`; };
+const fmtDateLong = (iso) => { const [y,m,dd] = iso.split("-"); return `${+dd} ${MES[+m-1]} ${y}`; };
+const monthLabel = (y, m) => `${MES_LARGO[m-1]} ${y}`;
+const isoOf = (d) => { const z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+// semana lunes→domingo que contiene refISO
+function weekRange(refISO) {
+  const [y, m, dd] = refISO.split("-").map(Number);
+  const d = new Date(y, m - 1, dd);
+  const wd = (d.getDay() + 6) % 7;            // lunes = 0
+  const start = new Date(d); start.setDate(d.getDate() - wd);
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  return { start: isoOf(start), end: isoOf(end) };
+}
 const num = (v) => (v === "" || v == null || isNaN(+v)) ? null : +v;
 
 function toast(msg, err = false) {
@@ -54,14 +67,35 @@ const I = {
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor"/></svg>',
   history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>',
+  image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>',
   google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.45 14.97.5 12 .5A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.3 9.14 4.75 12 4.75z"/></svg>',
 };
+
+// ---------- helpers de registro ----------
+// Una entrada es: { peso: número|null (uno por ejercicio), reps: [r1, r2, ...], notas }
+function entryReps(e) { return ((e && Array.isArray(e.reps)) ? e.reps : []).map((r) => num(r)).filter((v) => v != null); }
+function workWeight(e) { return num(e && e.peso); }
+function entryVolume(e) {
+  const w = workWeight(e);
+  if (w == null) return 0;
+  return w * entryReps(e).reduce((a, b) => a + b, 0);
+}
+function entryHasData(e) { return workWeight(e) != null || entryReps(e).length > 0 || !!(e && e.notas); }
+// Texto compacto, p. ej. "9 kg · 10, 8, 4 reps" o "45, 42, 40 s".
+function formatSets(ex, e) {
+  const reps = (e && Array.isArray(e.reps)) ? e.reps : [];
+  const list = reps.map((r) => (num(r) != null ? r : "–"));
+  if (!list.length) return "—";
+  if (ex && ex.unit === "seg") return list.join(", ") + " s";
+  const w = workWeight(e);
+  return (w != null ? `${w} kg · ` : "") + list.join(", ") + " reps";
+}
 
 // ---------- progresión (doble progresión) ----------
 function lastEntryFor(exId) {
   for (const s of state.sessions) {           // sessions vienen ordenadas desc por fecha
     const e = s.entries && s.entries[exId];
-    if (e && (num(e.peso) != null || num(e.reps) != null)) return { entry: e, date: s.date };
+    if (e && (workWeight(e) != null || entryReps(e).length > 0)) return { entry: e, date: s.date };
   }
   return null;
 }
@@ -69,25 +103,36 @@ function lastEntryFor(exId) {
 function suggestion(ex) {
   const last = lastEntryFor(ex.id);
   if (!last) return { kind: "new", text: "Primer registro. Empieza en el extremo bajo del rango con buena técnica." };
-  const reps = num(last.entry.reps);
-  const peso = num(last.entry.peso);
-  if (reps == null) return { kind: "hold", text: `Última vez con ${peso ?? "?"} kg. Anota tus reps para ver la progresión.` };
+  const reps = entryReps(last.entry);
+  const weight = workWeight(last.entry);
+  if (!reps.length) return { kind: "hold", text: `Última vez con ${weight ?? "?"} kg. Anota tus reps por serie para ver la progresión.` };
+
+  const repsStr = reps.join("·");
+  const allHigh = reps.length >= ex.sets && reps.every((r) => r >= ex.repHigh);
 
   if (ex.unit === "seg") {
-    if (reps >= ex.repHigh) return { kind: "up", text: `Aguantaste ${reps} s. Sube a ${ex.repHigh + 10} s o añade carga.` };
-    return { kind: "hold", text: `Última vez ${reps} s. Suma +5 s hasta llegar a ${ex.repHigh} s.` };
+    if (allHigh) return { kind: "up", text: `Aguantaste ${repsStr} s en todas las series. Sube a ${ex.repHigh + 10} s o añade carga.` };
+    return { kind: "hold", text: `Última vez ${repsStr} s. Suma segundos en las series flojas hasta ${ex.repHigh} s.` };
   }
-  if (reps >= ex.repHigh) {
-    if (peso != null && peso >= DUMBBELL_CAP_KG) {
-      return { kind: "cap", text: `${reps} reps con ${peso} kg (tu tope). Progresa con más reps, excéntrica de 3-4 s o versión a una pierna/un brazo.` };
+  if (allHigh) {
+    if (weight != null && weight >= DUMBBELL_CAP_KG) {
+      return { kind: "cap", text: `${repsStr} reps con ${weight} kg (tu tope) en todas las series. Progresa con más reps, excéntrica de 3-4 s o versión a una pierna/un brazo.` };
     }
-    const next = peso != null ? peso + (peso < 5 ? 1 : 2) : null;
+    const next = weight != null ? weight + (weight < 5 ? 1 : 2) : null;
     return { kind: "up", text: next != null
-      ? `Rango completo. Sube a ${next} kg y vuelve a ${ex.repLow} reps.`
-      : `Rango completo a ${reps} reps. Sube algo de peso y vuelve a ${ex.repLow} reps.` };
+      ? `Todas las series al tope (${repsStr}). Sube a ${next} kg y vuelve a ${ex.repLow} reps.`
+      : `Todas las series al tope. Sube algo de peso y vuelve a ${ex.repLow} reps.` };
   }
-  return { kind: "hold", text: `Última vez ${reps} reps${peso != null ? ` · ${peso} kg` : ""}. Mantén el peso y busca +1 rep (objetivo ${ex.repHigh}).` };
+  return { kind: "hold", text: `Última vez ${repsStr} reps${weight != null ? ` · ${weight} kg` : ""}. Mantén el peso y sube reps en las series flojas (objetivo ${ex.repHigh}).` };
 }
+
+// ---------- imagen del ejercicio (fallback jpg → png → marcador) ----------
+window.imgFallback = function (el, id) {
+  if (!el.dataset.tried) { el.dataset.tried = "1"; el.src = "img/" + id + ".png"; return; }
+  el.style.display = "none";
+  const ph = el.nextElementSibling;
+  if (ph) ph.style.display = "flex";
+};
 
 // ---------- router ----------
 function parseHash() {
@@ -106,7 +151,8 @@ function render() {
   const r = parseHash();
   switch (r.name) {
     case "session": return renderSession(r.a);
-    case "history": return renderHistory();
+    case "history": return renderHistory(r.a);
+    case "day": return renderDayDetail(r.a);
     case "log": return renderLogDetail(r.a);
     case "progress": return renderProgress(r.a);
     case "principios": return renderPrinciples();
@@ -186,11 +232,13 @@ function dayLastLabel(dayId) {
 }
 
 function renderDays() {
+  const wk = weekRange(todayISO());
   const cards = DAYS.map((d, i) => {
     const last = dayLastLabel(d.id);
+    const done = state.sessions.some((s) => s.dayId === d.id && s.date >= wk.start && s.date <= wk.end);
     return `
-      <button class="daycard" data-group="${d.group}" data-go="#/session/${d.id}">
-        <span class="didx">${i + 1}</span>
+      <button class="daycard ${done ? "done" : ""}" data-group="${d.group}" data-go="#/session/${d.id}">
+        ${done ? `<span class="wkdone">✓ Hecho</span>` : `<span class="didx">${i + 1}</span>`}
         <span class="grp">${d.group === "torso" ? "Torso" : "Pierna"}</span>
         <div class="dname">${esc(d.name)}</div>
         <div class="dmeta">${d.exercises.length} ejercicios</div>
@@ -200,6 +248,7 @@ function renderDays() {
   shell(`
     <div class="screen">
       ${topbar("Elige tu día", "Hoy entrenas")}
+      <p class="weeknote">Semana del ${fmtDate(wk.start)} al ${fmtDate(wk.end)} · marcados los que ya hiciste</p>
       <div class="daylist">${cards}</div>
       <div class="divider"><span class="label">Recuerda</span><span class="rule"></span></div>
       <p class="sub">Cada grupo muscular, 2 veces por semana. Calienta 5 min antes de empezar.</p>
@@ -208,34 +257,123 @@ function renderDays() {
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
 }
 
+// ---------- sesión: un ejercicio por pantalla ----------
+let draft = null; // { dayId, date, idx, entries: { exId: {peso, reps:[], notas} } }
+
+function initDraft(dayId) { draft = { dayId, date: todayISO(), idx: 0, entries: {}, pendingCue: false }; }
+
+function captureStep(day) {
+  if (!draft || draft.idx >= day.exercises.length) return;
+  const ex = day.exercises[draft.idx];
+  const card = document.querySelector(".exercise");
+  if (!card) return;
+  const pesoEl = card.querySelector('[data-field="peso"]');
+  const peso = pesoEl ? pesoEl.value.trim() : "";
+  const reps = [];
+  card.querySelectorAll('[data-field="reps"]').forEach((inp) => {
+    const v = inp.value.trim(); reps.push(v === "" ? null : Number(v));
+  });
+  const notasEl = card.querySelector('[data-field="notas"]');
+  draft.entries[ex.id] = { peso: peso === "" ? null : Number(peso), reps, notas: notasEl ? notasEl.value.trim() : "" };
+}
+
 function renderSession(dayId) {
   const day = DAYS.find((d) => d.id === dayId);
   if (!day) return go("#/days");
+  if (!draft || draft.dayId !== dayId) { initDraft(dayId); draft.pendingCue = true; }
+  if (draft.idx >= day.exercises.length) return renderSessionSummary(day);
+  if (draft.pendingCue) return renderCue(day);
+  renderStep(day);
+}
 
-  const exHtml = day.exercises.map((ex) => {
-    const sug = suggestion(ex);
-    const last = lastEntryFor(ex.id);
-    const prefPeso = last && num(last.entry.peso) != null ? last.entry.peso : "";
-    const unitLabel = ex.unit === "seg" ? "seg" : "reps";
-    const range = `${ex.repLow}-${ex.repHigh}`;
-    const lastReps = last ? num(last.entry.reps) : null;
-    const pct = lastReps != null
-      ? Math.max(0, Math.min(1, (lastReps - ex.repLow) / Math.max(1, ex.repHigh - ex.repLow)))
-      : 0;
-    const full = lastReps != null && lastReps >= ex.repHigh;
+// pantalla previa: pista del ejercicio que viene (a pantalla completa, ~7 s)
+function renderCue(day) {
+  const ex = day.exercises[draft.idx];
+  const list = (ex.cues && ex.cues.length) ? ex.cues : ["Ahora toca " + ex.name + "."];
+  const text = list[Math.floor(Math.random() * list.length)];
+  root.innerHTML = `
+    <div class="cue" id="cue">
+      <div class="cue-eyebrow">Siguiente · ${draft.idx + 1}/${day.exercises.length}</div>
+      <div class="cue-text">${esc(text)}</div>
+      <div class="cue-hint">toca para continuar</div>
+      <div class="cue-bar"><div class="cue-bar-fill"></div></div>
+    </div>`;
+  const proceed = () => { if (!draft || !draft.pendingCue) return; draft.pendingCue = false; renderStep(day); window.scrollTo(0, 0); };
+  const t = setTimeout(proceed, 7000);
+  $("#cue").onclick = () => { clearTimeout(t); proceed(); };
+}
 
-    return `
+function renderStep(day) {
+  const total = day.exercises.length;
+  const i = draft.idx;
+  const ex = day.exercises[i];
+  const sug = suggestion(ex);
+  const last = lastEntryFor(ex.id);
+  const saved = draft.entries[ex.id];
+  const range = `${ex.repLow}-${ex.repHigh}`;
+  const unitLabel = ex.unit === "seg" ? "seg" : "reps";
+
+  const pesoVal = saved && saved.peso != null ? saved.peso
+    : (last && workWeight(last.entry) != null ? workWeight(last.entry) : "");
+  const repVal = (k) => (saved && saved.reps && saved.reps[k] != null ? saved.reps[k] : "");
+
+  const lastReps = last ? entryReps(last.entry) : [];
+  const gate = lastReps.length ? Math.min(...lastReps) : null;
+  const pct = gate != null ? Math.max(0, Math.min(1, (gate - ex.repLow) / Math.max(1, ex.repHigh - ex.repLow))) : 0;
+  const full = gate != null && gate >= ex.repHigh;
+
+  const isDone = (k) => {
+    const e = draft.entries[day.exercises[k].id];
+    return !!e && (workWeight(e) != null || entryReps(e).length > 0);
+  };
+  const dots = day.exercises.map((_, k) =>
+    `<button class="dot ${k === i ? "now" : isDone(k) ? "done" : ""}" data-jump="${k}" aria-label="Ir al ejercicio ${k + 1}"></button>`).join("");
+
+  const repCells = Array.from({ length: ex.sets }).map((_, k) => `
+    <div class="repcell">
+      <span>S${k + 1}</span>
+      <input type="number" inputmode="numeric" data-field="reps" value="${esc(repVal(k))}" placeholder="${ex.unit === "seg" ? "seg" : range}">
+    </div>`).join("");
+
+  const muscles = `<div class="muscles">
+      <span class="mtag main">${esc(ex.mainMuscle)}</span>
+      ${ex.secMuscles.map((m) => `<span class="mtag">${esc(m)}</span>`).join("")}
+    </div>`;
+
+  const weightBox = ex.unit === "seg" ? "" : `
+    <div class="weightbox">
+      <label>Peso (kg) · el mismo para todas las series</label>
+      <div class="unit"><input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(pesoVal)}" placeholder="—"><span class="suf">kg</span></div>
+    </div>`;
+
+  shell(`
+    <div class="screen">
+      <div class="step-head">
+        <button class="linkbtn" id="exitsession">← Salir</button>
+        <div class="step-count">${i + 1} / ${total} · ${esc(day.name)}</div>
+      </div>
+      <div class="stepper">${dots}</div>
+
       <div class="exercise" data-ex="${ex.id}">
+        <div class="photo">
+          <img src="img/${ex.id}.jpg" alt="${esc(ex.name)}" onerror="imgFallback(this, '${ex.id}')">
+          <div class="photo-ph">${I.image}<span>Foto del ejercicio</span></div>
+        </div>
+
         <div class="ex-top">
           <div class="ex-name">${esc(ex.name)}</div>
           <div class="ex-scheme">${esc(ex.scheme)}<span class="rir">RIR ${esc(ex.rir)}</span></div>
         </div>
+
+        ${muscles}
 
         <div class="ex-tools">
           <a class="chip" href="${videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
           <button class="chip" data-ejec="${ex.id}">Cómo se hace</button>
           ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
         </div>
+
+        <div class="ejec collapse" data-ejecbox="${ex.id}">${esc(ex.ejecucion)}</div>
 
         <div class="suggest ${sug.kind === "up" ? "up" : sug.kind === "cap" ? "cap" : ""}">
           <span class="ico">${sug.kind === "up" ? "↑" : sug.kind === "cap" ? "10kg" : sug.kind === "new" ? "•" : "→"}</span>
@@ -245,7 +383,7 @@ function renderSession(dayId) {
         <div class="track-wrap">
           <div class="track-head">
             <span>${ex.repLow}</span>
-            <span class="now">${lastReps != null ? lastReps + " " + unitLabel : "—"}</span>
+            <span class="now">${lastReps.length ? "última: " + lastReps.join("·") + " " + unitLabel : "sin registro"}</span>
             <span>${ex.repHigh}</span>
           </div>
           <div class="track ${full ? "full" : ""}">
@@ -254,68 +392,80 @@ function renderSession(dayId) {
           </div>
         </div>
 
-        <div class="ejec collapse" data-ejecbox="${ex.id}">${esc(ex.ejecucion)}</div>
-
-        <div class="ex-form">
-          <div class="field">
-            <label>${ex.unit === "seg" ? "Carga / nivel" : "Peso (kg)"}</label>
-            <div class="unit"><input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(prefPeso)}" placeholder="${ex.unit === "seg" ? "opcional" : "—"}"><span class="suf">${ex.unit === "seg" ? "" : "kg"}</span></div>
-          </div>
-          <div class="field">
-            <label>${ex.unit === "seg" ? "Segundos" : "Reps (rango " + range + ")"}</label>
-            <div class="unit"><input type="number" inputmode="numeric" data-field="reps" placeholder="${range}"><span class="suf">${unitLabel}</span></div>
-          </div>
-          <div class="field full">
-            <label>Notas</label>
-            <textarea data-field="notas" placeholder="Sensaciones, técnica, RIR real…"></textarea>
-          </div>
+        ${weightBox}
+        <div class="reps-lbl">${ex.unit === "seg" ? "Segundos por serie" : "Reps por serie (" + range + ")"}</div>
+        <div class="reps-grid">${repCells}</div>
+        <div class="field full" style="margin-top:14px">
+          <label>Notas del ejercicio</label>
+          <textarea data-field="notas" placeholder="Sensaciones, técnica, RIR real…">${esc(saved ? saved.notas || "" : "")}</textarea>
         </div>
-      </div>`;
-  }).join("");
-
-  shell(`
-    <div class="screen">
-      ${topbar(day.name, "Sesión · " + (day.group === "torso" ? "Torso" : "Pierna"))}
-      <div class="shead">
-        <label class="date">${I.clock}<input type="date" id="sdate" value="${todayISO()}"></label>
       </div>
-      <div class="exlist">${exHtml}</div>
-      <div class="save-row">
-        <button class="btn btn-primary" id="save">Guardar sesión</button>
-        <p class="save-hint">Se guarda lo que rellenes; lo vacío se ignora.</p>
+
+      <div class="step-nav">
+        ${i > 0 ? `<button class="btn btn-ghost" id="prev">Anterior</button>` : `<span></span>`}
+        <button class="btn btn-primary" id="next">${i === total - 1 ? "Hecho · Resumen" : "Hecho · Siguiente"}</button>
       </div>
     </div>
     <button class="fab" id="opentimer" aria-label="Temporizador">${I.clock}</button>`, "days");
 
   bindCommon();
-  // colapsables de ejecución
-  document.querySelectorAll("[data-ejec]").forEach((b) => b.onclick = () => {
-    $(`[data-ejecbox="${b.dataset.ejec}"]`).classList.toggle("open");
-  });
-  // temporizador desde un isométrico
+  $("#exitsession").onclick = () => go("#/days");
+  document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; render(); window.scrollTo(0, 0); });
+  document.querySelectorAll("[data-ejec]").forEach((b) => b.onclick = () => $(`[data-ejecbox="${b.dataset.ejec}"]`).classList.toggle("open"));
   document.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => openTimer(+b.dataset.timer));
   $("#opentimer").onclick = () => openTimer(90);
+  const prev = $("#prev"); if (prev) prev.onclick = () => { captureStep(day); draft.idx--; draft.pendingCue = false; render(); window.scrollTo(0, 0); };
+  $("#next").onclick = () => {
+    captureStep(day);
+    const wasLast = draft.idx === day.exercises.length - 1;
+    draft.idx++;
+    draft.pendingCue = !wasLast;   // sin pista antes del resumen
+    render(); window.scrollTo(0, 0);
+  };
+}
+
+function renderSessionSummary(day) {
+  const rows = day.exercises.map((ex, k) => {
+    const e = draft.entries[ex.id];
+    const has = e && entryHasData(e);
+    return `<button class="sumrow ${has ? "" : "skip"}" data-edit="${k}">
+        <div class="sumname">${esc(ex.name)}</div>
+        <div class="sumval">${has ? esc(formatSets(ex, e)) : "sin registrar"}</div>
+        <span class="sumedit">Editar</span>
+      </button>`;
+  }).join("");
+
+  shell(`
+    <div class="screen">
+      <div class="step-head">
+        <button class="linkbtn" id="backlast">← Volver</button>
+        <div class="step-count">Resumen · ${esc(day.name)}</div>
+      </div>
+      ${topbar("Sesión completa", "Revisa y guarda")}
+      <label class="date" style="margin-bottom:14px">${I.clock}<input type="date" id="sdate" value="${draft.date}"></label>
+      <div class="sumlist">${rows}</div>
+      <div class="save-row">
+        <button class="btn btn-primary" id="save">Guardar sesión</button>
+        <p class="save-hint">Toca un ejercicio para editarlo. Lo que dejes sin registrar no se guarda.</p>
+      </div>
+    </div>`, "days");
+
+  bindCommon();
+  $("#backlast").onclick = () => { draft.idx = day.exercises.length - 1; render(); window.scrollTo(0, 0); };
+  document.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => { draft.idx = +b.dataset.edit; render(); window.scrollTo(0, 0); });
+  $("#sdate").onchange = (e) => { draft.date = e.target.value || todayISO(); };
   $("#save").onclick = () => saveSession(day);
 }
 
 async function saveSession(day) {
   const btn = $("#save");
-  const date = $("#sdate").value || todayISO();
+  const date = (draft && draft.date) || todayISO();
   const entries = {};
-  document.querySelectorAll(".exercise").forEach((card) => {
-    const id = card.dataset.ex;
-    const peso = $('[data-field="peso"]', card).value.trim();
-    const reps = $('[data-field="reps"]', card).value.trim();
-    const notas = $('[data-field="notas"]', card).value.trim();
-    if (peso !== "" || reps !== "" || notas !== "") {
-      entries[id] = {
-        peso: peso === "" ? null : Number(peso),
-        reps: reps === "" ? null : Number(reps),
-        notas,
-      };
-    }
-  });
-  if (Object.keys(entries).length === 0) { toast("Rellena al menos un ejercicio", true); return; }
+  for (const ex of day.exercises) {
+    const e = draft.entries[ex.id];
+    if (e && entryHasData(e)) entries[ex.id] = { peso: e.peso ?? null, reps: e.reps || [], notas: e.notas || "" };
+  }
+  if (Object.keys(entries).length === 0) { toast("Registra al menos un ejercicio", true); return; }
 
   btn.disabled = true; btn.textContent = "Guardando…";
   try {
@@ -324,6 +474,7 @@ async function saveSession(day) {
     });
     state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries });
     state.sessions.sort((a, b) => (a.date < b.date ? 1 : -1));
+    draft = null;
     toast("Sesión guardada 💪");
     go("#/days");
   } catch (e) {
@@ -333,25 +484,92 @@ async function saveSession(day) {
   }
 }
 
-function renderHistory() {
-  let inner;
-  if (state.sessions.length === 0) {
-    inner = `<div class="empty"><div class="big">Aún no hay entrenos</div><p>Registra tu primera sesión y aparecerá aquí.</p></div>`;
-  } else {
-    inner = `<div class="hist">` + state.sessions.map((s) => {
-      const n = Object.keys(s.entries || {}).length;
-      const [y, m, dd] = s.date.split("-");
-      return `
-        <button class="histcard" data-go="#/log/${s.id}">
-          <div class="d"><b>${+dd}</b>${MES[+m - 1]} ${y.slice(2)}</div>
-          <div class="info">
-            <div class="n">${esc(s.dayName)}</div>
-            <div class="s">${n} ejercicio${n === 1 ? "" : "s"} registrados</div>
-          </div>
-        </button>`;
-    }).join("") + `</div>`;
+function renderHistory(ym) {
+  const today = todayISO();
+  const [ty, tm] = today.split("-").map(Number);
+  let [y, m] = (ym && /^\d{4}-\d{2}$/.test(ym)) ? ym.split("-").map(Number)
+    : (state.sessions[0] ? state.sessions[0].date.slice(0, 7).split("-").map(Number) : [ty, tm]);
+
+  const byDate = {};
+  state.sessions.forEach((s) => { (byDate[s.date] = byDate[s.date] || []).push(s); });
+
+  const first = new Date(y, m - 1, 1);
+  const startWd = (first.getDay() + 6) % 7;             // lunes = 0
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const pad = (n) => String(n).padStart(2, "0");
+  const prevYM = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`;
+  const nextYM = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`;
+  const atCurrent = (y > ty) || (y === ty && m >= tm);  // no avanzar más allá del mes actual
+
+  const cells = [];
+  for (let i = 0; i < startWd; i++) cells.push(`<div class="cal-cell empty"></div>`);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = `${y}-${pad(m)}-${pad(d)}`;
+    const ss = byDate[date] || [];
+    const isToday = date === today;
+    if (ss.length) {
+      const dots = ss.slice(0, 3).map((s) => {
+        const day = DAYS.find((x) => x.id === s.dayId);
+        return `<i class="cdot ${day ? day.group : "torso"}"></i>`;
+      }).join("");
+      cells.push(`<button class="cal-cell has ${isToday ? "today" : ""}" data-go="#/day/${date}"><span class="cnum">${d}</span><span class="cdots">${dots}</span></button>`);
+    } else {
+      cells.push(`<div class="cal-cell ${isToday ? "today" : ""}"><span class="cnum">${d}</span></div>`);
+    }
   }
-  shell(`<div class="screen">${topbar("Historial", "Tus sesiones")}${inner}</div>`, "history");
+
+  const wd = ["L", "M", "X", "J", "V", "S", "D"].map((x) => `<div class="cal-wd">${x}</div>`).join("");
+
+  const monthSessions = state.sessions
+    .filter((s) => s.date.startsWith(`${y}-${pad(m)}`))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  const list = monthSessions.length
+    ? `<div class="hist">` + monthSessions.map((s) => {
+        const n = Object.keys(s.entries || {}).length;
+        const [, mm, dd] = s.date.split("-");
+        return `<button class="histcard" data-go="#/day/${s.date}"><div class="d"><b>${+dd}</b>${MES[+mm - 1]}</div><div class="info"><div class="n">${esc(s.dayName)}</div><div class="s">${n} ejercicio${n === 1 ? "" : "s"}</div></div></button>`;
+      }).join("") + `</div>`
+    : `<p class="sub" style="margin-top:16px">Sin sesiones este mes.</p>`;
+
+  shell(`
+    <div class="screen">
+      ${topbar("Historial", "Tu calendario")}
+      <div class="cal">
+        <div class="cal-head">
+          <button class="cal-nav" data-go="#/history/${prevYM}" aria-label="Mes anterior">‹</button>
+          <div class="cal-title">${monthLabel(y, m)}</div>
+          <button class="cal-nav ${atCurrent ? "disabled" : ""}" ${atCurrent ? "disabled" : `data-go="#/history/${nextYM}"`} aria-label="Mes siguiente">›</button>
+        </div>
+        <div class="cal-grid cal-wds">${wd}</div>
+        <div class="cal-grid">${cells.join("")}</div>
+        <div class="cal-legend"><span><i class="cdot torso"></i>Torso</span><span><i class="cdot pierna"></i>Pierna</span></div>
+      </div>
+      ${list}
+    </div>`, "history");
+  bindCommon();
+  document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+}
+
+function renderDayDetail(date) {
+  if (!date) return go("#/history");
+  const ym = date.slice(0, 7);
+  const ss = state.sessions.filter((s) => s.date === date);
+  if (!ss.length) return go(`#/history/${ym}`);
+  const blocks = ss.map((s) => {
+    const rows = Object.entries(s.entries || {}).map(([exId, e]) => {
+      const ex = EXERCISE_INDEX[exId];
+      const name = ex ? ex.name : exId;
+      const vol = entryVolume(e);
+      return `<div class="detail-ex"><h4>${esc(name)}</h4><div class="vals">${esc(formatSets(ex, e))}${vol ? ` <span class="vol">· vol ${vol} kg·rep</span>` : ""}</div>${e.notas ? `<div class="notas">${esc(e.notas)}</div>` : ""}</div>`;
+    }).join("") || `<p class="sub">Sesión sin datos.</p>`;
+    return `<div class="day-block"><div class="day-block-h">${esc(s.dayName)}</div>${rows}</div>`;
+  }).join("");
+  shell(`
+    <div class="screen">
+      ${topbar(fmtDateLong(date), "Detalle del día")}
+      <button class="linkbtn" data-go="#/history/${ym}">← Volver al historial</button>
+      ${blocks}
+    </div>`, "history");
   bindCommon();
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
 }
@@ -362,13 +580,10 @@ function renderLogDetail(id) {
   const rows = Object.entries(s.entries || {}).map(([exId, e]) => {
     const ex = EXERCISE_INDEX[exId];
     const name = ex ? ex.name : exId;
-    const unit = ex && ex.unit === "seg" ? "s" : "reps";
-    const parts = [];
-    if (num(e.peso) != null) parts.push(`${e.peso} kg`);
-    if (num(e.reps) != null) parts.push(`${e.reps} ${unit}`);
+    const vol = entryVolume(e);
     return `<div class="detail-ex">
       <h4>${esc(name)}</h4>
-      <div class="vals">${parts.join("  ·  ") || "—"}</div>
+      <div class="vals">${esc(formatSets(ex, e))}${vol ? ` <span class="vol">· vol ${vol} kg·rep</span>` : ""}</div>
       ${e.notas ? `<div class="notas">${esc(e.notas)}</div>` : ""}
     </div>`;
   }).join("") || `<p class="sub">Sesión sin datos.</p>`;
@@ -386,20 +601,22 @@ function renderLogDetail(id) {
 // ---------- progreso + gráfica ----------
 function seriesFor(exId) {
   const ex = EXERCISE_INDEX[exId];
-  const useReps = ex && (ex.unit === "seg");
+  const time = ex && ex.unit === "seg";
   const pts = [];
-  // recorrer ascendente por fecha
   [...state.sessions].sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((s) => {
     const e = s.entries && s.entries[exId];
     if (!e) return;
-    const peso = num(e.peso), reps = num(e.reps);
-    const value = useReps ? reps : (peso != null ? peso : reps);
-    if (value != null) pts.push({ date: s.date, value, peso, reps });
+    const reps = entryReps(e);
+    const w = workWeight(e);
+    if (!reps.length && w == null) return;
+    const value = time ? (reps.length ? Math.max(...reps) : null) : (w != null ? w : (reps.length ? Math.max(...reps) : null));
+    if (value == null) return;
+    pts.push({ date: s.date, value, volume: entryVolume(e), totReps: reps.reduce((a, b) => a + b, 0) });
   });
-  return { pts, useReps };
+  return { pts, time };
 }
 
-function lineChart({ pts, useReps }, ex) {
+function lineChart({ pts, time }, ex) {
   if (pts.length < 1) return `<div class="empty"><p>Sin registros todavía para este ejercicio.</p></div>`;
   const W = 320, H = 160, padX = 16, padY = 20;
   const vals = pts.map((p) => p.value);
@@ -415,10 +632,9 @@ function lineChart({ pts, useReps }, ex) {
     const yy = padY + t * (H - 2 * padY);
     return `<line x1="${padX}" y1="${yy}" x2="${W - padX}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
   }).join("");
-  const unit = useReps ? (ex.unit === "seg" ? "segundos" : "reps") : "kg";
   return `
     <div class="chartcard">
-      <div class="chart-legend"><span><i style="background:var(--accent)"></i>${useReps ? "Aguante" : "Peso"} (${unit})</span></div>
+      <div class="chart-legend"><span><i style="background:var(--accent)"></i>${time ? "Aguante por serie (s)" : "Peso de trabajo (kg)"}</span></div>
       <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
         ${grid}
         <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -435,16 +651,18 @@ function renderProgress(exId) {
 
   // stats
   const withData = data.pts;
-  const bestPeso = withData.reduce((m, p) => (p.peso != null && p.peso > m ? p.peso : m), 0);
-  const bestReps = withData.reduce((m, p) => {
-    const r = data.useReps ? p.value : p.reps;
-    return (r != null && r > m ? r : m);
-  }, 0);
+  const bestValue = withData.reduce((m, p) => (p.value > m ? p.value : m), 0);
+  const bestVol = withData.reduce((m, p) => (p.volume > m ? p.volume : m), 0);
+  const bestSet = withData.reduce((m, p) => (p.value > m ? p.value : m), 0); // mejor serie (peso o seg)
 
   const options = DAYS.map((d) =>
     `<optgroup label="${esc(d.name)}">` +
     d.exercises.map((e) => `<option value="${e.id}" ${e.id === current ? "selected" : ""}>${esc(e.name)}</option>`).join("") +
     `</optgroup>`).join("");
+
+  const stat3 = data.time
+    ? `<div class="stat"><div class="k">Mejor serie</div><div class="v">${bestSet || "—"}<small> s</small></div></div>`
+    : `<div class="stat"><div class="k">Mejor volumen</div><div class="v">${bestVol || "—"}<small> kg·rep</small></div></div>`;
 
   shell(`
     <div class="screen">
@@ -453,11 +671,11 @@ function renderProgress(exId) {
       ${lineChart(data, ex)}
       <div class="statgrid">
         <div class="stat"><div class="k">Sesiones</div><div class="v">${withData.length}</div></div>
-        <div class="stat"><div class="k">${data.useReps ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${data.useReps ? bestReps : bestPeso}<small> ${data.useReps ? (ex.unit === "seg" ? "s" : "reps") : "kg"}</small></div></div>
-        <div class="stat"><div class="k">Mejor reps</div><div class="v">${bestReps || "—"}</div></div>
+        <div class="stat"><div class="k">${data.time ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${bestValue || "—"}<small> ${data.time ? "s" : "kg"}</small></div></div>
+        ${stat3}
       </div>
       <div class="divider"><span class="label">Objetivo</span><span class="rule"></span></div>
-      <p class="sub">${esc(ex.scheme)} · RIR ${esc(ex.rir)}. ${suggestion(ex).text}</p>
+      <p class="sub">${esc(ex.scheme)} · RIR ${esc(ex.rir)}. ${esc(suggestion(ex).text)}</p>
     </div>`, "progress");
   bindCommon();
   $("#exsel").onchange = (e) => go("#/progress/" + e.target.value);

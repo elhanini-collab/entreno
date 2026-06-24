@@ -5,12 +5,12 @@
 // ====================================================================
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyAMXZ8FVQJbUEq8Hj4oFVQ-ROnp12bwHcI",
-  authDomain: "entreno-f1b63.firebaseapp.com",
-  projectId: "entreno-f1b63",
-  storageBucket: "entreno-f1b63.firebasestorage.app",
-  messagingSenderId: "301442042633",
-  appId: "1:301442042633:web:d6480178b2094939e8e1d8"
+  apiKey: "PEGA_TU_API_KEY",
+  authDomain: "PEGA_TU_PROYECTO.firebaseapp.com",
+  projectId: "PEGA_TU_PROYECTO",
+  storageBucket: "PEGA_TU_PROYECTO.appspot.com",
+  messagingSenderId: "PEGA_TU_SENDER_ID",
+  appId: "PEGA_TU_APP_ID",
 };
 
 // Nota: estas claves NO son secretas; es normal que viajen en el cliente.

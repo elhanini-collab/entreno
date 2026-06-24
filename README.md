@@ -95,14 +95,22 @@ Quedará con su icono y se abrirá a pantalla completa, como una app normal.
 
 ## 5. Cómo se usa
 
-- **Entreno:** elige el día (Torso A, Pierna A, Torso B, Pierna B). En cada
-  ejercicio tienes el objetivo, la técnica (botón *Cómo se hace*), el vídeo, y
-  campos para anotar peso, reps y notas. Pulsa **Guardar sesión**.
+- **Entreno:** elige el día (Torso A, Pierna A, Torso B, Pierna B). La sesión te
+  muestra **un ejercicio por pantalla**: foto, músculo principal y secundarios,
+  objetivo, técnica (*Cómo se hace*), vídeo, un único campo de **peso** (igual
+  para todas las series) y una casilla de **reps por serie** (S1, S2, S3…), más
+  notas. Pulsa **Hecho** para pasar al siguiente. Al terminar verás un resumen
+  donde puedes ajustar la fecha, editar cualquier ejercicio y **Guardar sesión**.
+- **Fotos:** mete una imagen por ejercicio en la carpeta `img/` con el nombre del
+  ejercicio (`d1e1.jpg`, `d2e3.jpg`…). Tienes la lista completa en `img/README.txt`.
+  Mientras no haya foto, se muestra un marcador.
 - **Sugerencia de progresión:** bajo cada ejercicio aparece qué hacer hoy según
-  tu último registro (mantener peso y sumar reps, subir peso, o —al llegar a tu
-  tope de 10 kg— progresar con más reps, excéntrica lenta o versión unilateral).
-- **Barra de rango:** muestra de un vistazo cómo de cerca estás del extremo alto
-  del rango; cuando lo completas, se pone en verde (toca subir peso).
+  tu último registro. Sube peso solo cuando completas el extremo alto del rango
+  **en todas las series**; mientras alguna serie se quede corta, mantienes el
+  peso y subes reps en las flojas. Al llegar a tu tope de 10 kg, progresa con
+  más reps, excéntrica lenta o versión unilateral.
+- **Barra de rango:** marca tu serie más floja (la que limita progresar); cuando
+  todas llegan al tope se pone en verde (toca subir peso).
 - **Historial:** todas tus sesiones por fecha; toca una para ver el detalle.
 - **Progreso:** elige un ejercicio y ve su gráfica de peso (o de aguante en los
   isométricos) a lo largo del tiempo, con tus mejores marcas.
