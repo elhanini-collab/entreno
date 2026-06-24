@@ -356,7 +356,7 @@ function renderStep(day) {
 
       <div class="exercise" data-ex="${ex.id}">
         <div class="photo">
-          <img src="img/${ex.id}.jpg" alt="${esc(ex.name)}" onerror="imgFallback(this, '${ex.id}')">
+          <img src="img/${ex.id}.jpg" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}')">
           <div class="photo-ph">${I.image}<span>Foto del ejercicio</span></div>
         </div>
 
