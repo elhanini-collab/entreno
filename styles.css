@@ -521,7 +521,13 @@ a { color: inherit; }
   position: relative; width: 100%; aspect-ratio: 16/10; border-radius: var(--r-md);
   overflow: hidden; background: var(--bg-2); border: 1px solid var(--line); margin-bottom: 14px;
 }
-.photo img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
+.photo img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  position: relative; z-index: 1;
+  object-position: left center;          /* recorta el sobrante por la derecha */
+  transform: scale(1.12);                /* leve zoom... */
+  transform-origin: left center;         /* ...anclado a la izquierda: la banda derecha (marca de IA) queda fuera */
+}
 .photo-ph {
   position: absolute; inset: 0; z-index: 0; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 8px; color: var(--faint);
