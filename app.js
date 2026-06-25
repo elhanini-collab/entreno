@@ -12,7 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
-import { DAYS, PRINCIPLES, EXERCISE_INDEX, videoUrl, DUMBBELL_CAP_KG, exerciseImages } from "./routine.js";
+import { DAYS, PRINCIPLES, EXERCISE_INDEX, videoUrl, DUMBBELL_CAP_KG, exerciseImages, exerciseSource } from "./routine.js";
 
 const root = document.getElementById("app");
 const CONFIGURED = !String(firebaseConfig.apiKey || "").startsWith("PEGA_TU");
@@ -356,7 +356,7 @@ function renderStep(day) {
     photoHtml = `<div class="photo demo">
           <div class="photo-ph">${I.image}<span>Demostración no disponible</span></div>
           ${frames}
-          <span class="photo-src">Free Exercise DB</span>
+          <span class="photo-src">${esc(exerciseSource(ex.id))}</span>
         </div>`;
   } else {
     photoHtml = `<div class="photo">

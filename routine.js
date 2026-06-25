@@ -145,38 +145,42 @@ export const PRINCIPLES = [
   { title: "Nota", body: "Plan orientativo. Ajusta cargas y volumen según tu recuperación. Ante dolor (no la molestia muscular normal), detente y revisa la técnica." },
 ];
 
-export const FED_BASE = "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/";
-
-// Medios de Free Exercise DB (dominio público, Unlicense). 2 fotogramas por ejercicio = inicio y fin del movimiento.
+// Medios de demostración. Free Exercise DB (dominio público) en 2 fotogramas; algún ejercicio usa un GIF externo.
 export const EXERCISE_MEDIA = {
-  d1e1: { dbId: "Dumbbell_Bench_Press", frames: 2, en: "Dumbbell Bench Press", ok: true },
-  d1e2: { dbId: "One-Arm_Dumbbell_Row", frames: 2, en: "One-Arm Dumbbell Row", ok: false },
-  d1e3: { dbId: "Dumbbell_Shoulder_Press", frames: 2, en: "Dumbbell Shoulder Press", ok: true },
-  d1e4: { dbId: "Incline_Dumbbell_Flyes", frames: 2, en: "Incline Dumbbell Flyes", ok: false },
-  d1e5: { dbId: "Dumbbell_Bicep_Curl", frames: 2, en: "Dumbbell Bicep Curl", ok: true },
-  d1e6: { dbId: "Standing_Dumbbell_Triceps_Extension", frames: 2, en: "Standing Dumbbell Triceps Extension", ok: false },
-  d2e1: { dbId: "Dumbbell_Squat", frames: 2, en: "Dumbbell Squat", ok: true },
-  d2e2: { dbId: "Stiff-Legged_Dumbbell_Deadlift", frames: 2, en: "Stiff-Legged Dumbbell Deadlift", ok: false },
-  d2e4: { dbId: "Butt_Lift_Bridge", frames: 2, en: "Butt Lift (Bridge)", ok: true },
-  d2e5: { dbId: "Calf_Raise_On_A_Dumbbell", frames: 2, en: "Calf Raise On A Dumbbell", ok: true },
-  d2e6: { dbId: "Plank", frames: 2, en: "Plank", ok: false },
-  d3e1: { dbId: "Incline_Dumbbell_Press", frames: 2, en: "Incline Dumbbell Press", ok: false },
-  d3e2: { dbId: "Dumbbell_Incline_Row", frames: 2, en: "Dumbbell Incline Row", ok: true },
-  d3e3: { dbId: "Side_Lateral_Raise", frames: 2, en: "Side Lateral Raise", ok: false },
-  d3e4: { dbId: "Bent-Arm_Dumbbell_Pullover", frames: 2, en: "Bent-Arm Dumbbell Pullover", ok: true },
-  d3e5: { dbId: "Alternate_Hammer_Curl", frames: 2, en: "Alternate Hammer Curl", ok: true },
-  d3e6: { dbId: "Dumbbell_Floor_Press", frames: 2, en: "Dumbbell Floor Press", ok: true },
-  d4e1: { dbId: "Dumbbell_Rear_Lunge", frames: 2, en: "Dumbbell Rear Lunge", ok: true },
-  d4e3: { dbId: "Dumbbell_Squat", frames: 2, en: "Dumbbell Squat", ok: true },
-  d4e4: { dbId: "Dumbbell_Step_Ups", frames: 2, en: "Dumbbell Step Ups", ok: true },
-  d4e5: { dbId: "Dumbbell_Seated_One-Leg_Calf_Raise", frames: 2, en: "Dumbbell Seated One-Leg Calf Raise", ok: true },
-  d4e6: { dbId: "Flat_Bench_Lying_Leg_Raise", frames: 2, en: "Flat Bench Lying Leg Raise", ok: false },
+  d1e1: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bench_Press/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bench_Press/1.jpg"], en: "Dumbbell Bench Press", source: "Free Exercise DB", ok: true },
+  d1e2: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/One-Arm_Dumbbell_Row/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/One-Arm_Dumbbell_Row/1.jpg"], en: "One-Arm Dumbbell Row", source: "Free Exercise DB", ok: false },
+  d1e3: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Shoulder_Press/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Shoulder_Press/1.jpg"], en: "Dumbbell Shoulder Press", source: "Free Exercise DB", ok: true },
+  d1e4: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Flyes/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Flyes/1.jpg"], en: "Incline Dumbbell Flyes", source: "Free Exercise DB", ok: false },
+  d1e5: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bicep_Curl/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bicep_Curl/1.jpg"], en: "Dumbbell Bicep Curl", source: "Free Exercise DB", ok: true },
+  d1e6: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Dumbbell_Triceps_Extension/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Dumbbell_Triceps_Extension/1.jpg"], en: "Standing Dumbbell Triceps Extension", source: "Free Exercise DB", ok: false },
+  d2e1: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/1.jpg"], en: "Dumbbell Squat", source: "Free Exercise DB", ok: true },
+  d2e2: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stiff-Legged_Dumbbell_Deadlift/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stiff-Legged_Dumbbell_Deadlift/1.jpg"], en: "Stiff-Legged Dumbbell Deadlift", source: "Free Exercise DB", ok: false },
+  d2e3: { urls: ["https://fitnessprogramer.com/wp-content/uploads/2021/05/Dumbbell-Bulgarian-Split-Squat.gif"], en: "", source: "fitnessprogramer.com", ok: false },
+  d2e4: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Butt_Lift_Bridge/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Butt_Lift_Bridge/1.jpg"], en: "Butt Lift (Bridge)", source: "Free Exercise DB", ok: true },
+  d2e5: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"], en: "Calf Raise On A Dumbbell", source: "Free Exercise DB", ok: true },
+  d2e6: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Plank/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Plank/1.jpg"], en: "Plank", source: "Free Exercise DB", ok: false },
+  d3e1: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Press/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Press/1.jpg"], en: "Incline Dumbbell Press", source: "Free Exercise DB", ok: false },
+  d3e2: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Incline_Row/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Incline_Row/1.jpg"], en: "Dumbbell Incline Row", source: "Free Exercise DB", ok: true },
+  d3e3: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/1.jpg"], en: "Side Lateral Raise", source: "Free Exercise DB", ok: false },
+  d3e4: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent-Arm_Dumbbell_Pullover/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent-Arm_Dumbbell_Pullover/1.jpg"], en: "Bent-Arm Dumbbell Pullover", source: "Free Exercise DB", ok: true },
+  d3e5: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Alternate_Hammer_Curl/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Alternate_Hammer_Curl/1.jpg"], en: "Alternate Hammer Curl", source: "Free Exercise DB", ok: true },
+  d3e6: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Floor_Press/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Floor_Press/1.jpg"], en: "Dumbbell Floor Press", source: "Free Exercise DB", ok: true },
+  d4e1: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Rear_Lunge/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Rear_Lunge/1.jpg"], en: "Dumbbell Rear Lunge", source: "Free Exercise DB", ok: true },
+  d4e2: { urls: ["https://fitnessprogramer.com/wp-content/uploads/2022/09/Dumbbell-Single-Leg-Deadlift.gif"], en: "", source: "fitnessprogramer.com", ok: false },
+  d4e3: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/1.jpg"], en: "Dumbbell Squat", source: "Free Exercise DB", ok: true },
+  d4e4: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Step_Ups/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Step_Ups/1.jpg"], en: "Dumbbell Step Ups", source: "Free Exercise DB", ok: true },
+  d4e5: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Seated_One-Leg_Calf_Raise/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Seated_One-Leg_Calf_Raise/1.jpg"], en: "Dumbbell Seated One-Leg Calf Raise", source: "Free Exercise DB", ok: true },
+  d4e6: { urls: ["https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Flat_Bench_Lying_Leg_Raise/0.jpg", "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Flat_Bench_Lying_Leg_Raise/1.jpg"], en: "Flat Bench Lying Leg Raise", source: "Free Exercise DB", ok: false },
 };
 
 export function exerciseImages(exId) {
   const m = EXERCISE_MEDIA[exId];
-  if (!m || !m.frames) return [];
-  return Array.from({ length: m.frames }, (_, i) => FED_BASE + m.dbId + "/" + i + ".jpg");
+  return (m && m.urls) ? m.urls : [];
+}
+
+export function exerciseSource(exId) {
+  const m = EXERCISE_MEDIA[exId];
+  return (m && m.source) ? m.source : "";
 }
 
 export const EXERCISE_INDEX = (() => {
