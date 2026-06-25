@@ -12,7 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
-import { DAYS, PRINCIPLES, EXERCISE_INDEX, videoUrl, DUMBBELL_CAP_KG } from "./routine.js";
+import { DAYS, PRINCIPLES, EXERCISE_INDEX, videoUrl, DUMBBELL_CAP_KG, exerciseImages } from "./routine.js";
 
 const root = document.getElementById("app");
 const CONFIGURED = !String(firebaseConfig.apiKey || "").startsWith("PEGA_TU");
@@ -346,6 +346,25 @@ function renderStep(day) {
       <div class="unit"><input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(pesoVal)}" placeholder="—"><span class="suf">kg</span></div>
     </div>`;
 
+  // foto/demostración: imágenes de Free Exercise DB (2 fotogramas animados); si no hay, foto local; si no, marcador
+  const demoImgs = exerciseImages(ex.id);
+  let photoHtml;
+  if (demoImgs.length) {
+    const frames = demoImgs.map((src, k) =>
+      `<img class="fr fr${k}" src="${src}" alt="${k === 0 ? esc(ex.name) : ""}" ${k === 0 ? `onload="this.parentElement.querySelector('.photo-ph').style.display='none'" onerror="this.style.display='none'"` : `onerror="this.style.display='none'"`}>`
+    ).join("");
+    photoHtml = `<div class="photo demo">
+          <div class="photo-ph">${I.image}<span>Demostración no disponible</span></div>
+          ${frames}
+          <span class="photo-src">Free Exercise DB</span>
+        </div>`;
+  } else {
+    photoHtml = `<div class="photo">
+          <img src="img/${ex.id}.jpg" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}')">
+          <div class="photo-ph">${I.image}<span>Foto del ejercicio</span></div>
+        </div>`;
+  }
+
   shell(`
     <div class="screen">
       <div class="step-head">
@@ -355,10 +374,7 @@ function renderStep(day) {
       <div class="stepper">${dots}</div>
 
       <div class="exercise" data-ex="${ex.id}">
-        <div class="photo">
-          <img src="img/${ex.id}.jpg" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}')">
-          <div class="photo-ph">${I.image}<span>Foto del ejercicio</span></div>
-        </div>
+        ${photoHtml}
 
         <div class="ex-top">
           <div class="ex-name">${esc(ex.name)}</div>
@@ -368,7 +384,6 @@ function renderStep(day) {
         ${muscles}
 
         <div class="ex-tools">
-          <a class="chip" href="${videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
           <button class="chip" data-ejec="${ex.id}">Cómo se hace</button>
           ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
         </div>

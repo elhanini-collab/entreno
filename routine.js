@@ -145,6 +145,40 @@ export const PRINCIPLES = [
   { title: "Nota", body: "Plan orientativo. Ajusta cargas y volumen según tu recuperación. Ante dolor (no la molestia muscular normal), detente y revisa la técnica." },
 ];
 
+export const FED_BASE = "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/";
+
+// Medios de Free Exercise DB (dominio público, Unlicense). 2 fotogramas por ejercicio = inicio y fin del movimiento.
+export const EXERCISE_MEDIA = {
+  d1e1: { dbId: "Dumbbell_Bench_Press", frames: 2, en: "Dumbbell Bench Press", ok: true },
+  d1e2: { dbId: "One-Arm_Dumbbell_Row", frames: 2, en: "One-Arm Dumbbell Row", ok: false },
+  d1e3: { dbId: "Dumbbell_Shoulder_Press", frames: 2, en: "Dumbbell Shoulder Press", ok: true },
+  d1e4: { dbId: "Incline_Dumbbell_Flyes", frames: 2, en: "Incline Dumbbell Flyes", ok: false },
+  d1e5: { dbId: "Dumbbell_Bicep_Curl", frames: 2, en: "Dumbbell Bicep Curl", ok: true },
+  d1e6: { dbId: "Standing_Dumbbell_Triceps_Extension", frames: 2, en: "Standing Dumbbell Triceps Extension", ok: false },
+  d2e1: { dbId: "Dumbbell_Squat", frames: 2, en: "Dumbbell Squat", ok: true },
+  d2e2: { dbId: "Stiff-Legged_Dumbbell_Deadlift", frames: 2, en: "Stiff-Legged Dumbbell Deadlift", ok: false },
+  d2e4: { dbId: "Butt_Lift_Bridge", frames: 2, en: "Butt Lift (Bridge)", ok: true },
+  d2e5: { dbId: "Calf_Raise_On_A_Dumbbell", frames: 2, en: "Calf Raise On A Dumbbell", ok: true },
+  d2e6: { dbId: "Plank", frames: 2, en: "Plank", ok: false },
+  d3e1: { dbId: "Incline_Dumbbell_Press", frames: 2, en: "Incline Dumbbell Press", ok: false },
+  d3e2: { dbId: "Dumbbell_Incline_Row", frames: 2, en: "Dumbbell Incline Row", ok: true },
+  d3e3: { dbId: "Side_Lateral_Raise", frames: 2, en: "Side Lateral Raise", ok: false },
+  d3e4: { dbId: "Bent-Arm_Dumbbell_Pullover", frames: 2, en: "Bent-Arm Dumbbell Pullover", ok: true },
+  d3e5: { dbId: "Alternate_Hammer_Curl", frames: 2, en: "Alternate Hammer Curl", ok: true },
+  d3e6: { dbId: "Dumbbell_Floor_Press", frames: 2, en: "Dumbbell Floor Press", ok: true },
+  d4e1: { dbId: "Dumbbell_Rear_Lunge", frames: 2, en: "Dumbbell Rear Lunge", ok: true },
+  d4e3: { dbId: "Dumbbell_Squat", frames: 2, en: "Dumbbell Squat", ok: true },
+  d4e4: { dbId: "Dumbbell_Step_Ups", frames: 2, en: "Dumbbell Step Ups", ok: true },
+  d4e5: { dbId: "Dumbbell_Seated_One-Leg_Calf_Raise", frames: 2, en: "Dumbbell Seated One-Leg Calf Raise", ok: true },
+  d4e6: { dbId: "Flat_Bench_Lying_Leg_Raise", frames: 2, en: "Flat Bench Lying Leg Raise", ok: false },
+};
+
+export function exerciseImages(exId) {
+  const m = EXERCISE_MEDIA[exId];
+  if (!m || !m.frames) return [];
+  return Array.from({ length: m.frames }, (_, i) => FED_BASE + m.dbId + "/" + i + ".jpg");
+}
+
 export const EXERCISE_INDEX = (() => {
   const idx = {};
   for (const day of DAYS) for (const ex of day.exercises) idx[ex.id] = { ...ex, dayId: day.id, dayName: day.name };
