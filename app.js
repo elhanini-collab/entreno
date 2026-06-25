@@ -22,9 +22,26 @@ const state = {
   user: null,
   sessions: [],      // [{id, dayId, dayName, date, entries:{exId:{peso,reps,notas}}}]
   loaded: false,
+  variants: {},      // { exId: true }  ejercicios sustituidos por su variante
 };
 
+function loadVariants() {
+  try { return JSON.parse(localStorage.getItem("carga_variants") || "{}") || {}; }
+  catch (_) { return {}; }
+}
+function saveVariants() {
+  try { localStorage.setItem("carga_variants", JSON.stringify(state.variants)); } catch (_) {}
+}
+// Devuelve el ejercicio activo: la variante si está sustituido, si no el original.
+function resolveExercise(base) {
+  if (state.variants[base.id] && base.variant) {
+    return { ...base, ...base.variant, id: base.id, isVariant: true, base };
+  }
+  return { ...base, isVariant: false, base };
+}
+
 let auth = null, db = null;
+state.variants = loadVariants();
 
 // ---------- utilidades ----------
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -50,6 +67,26 @@ function weekRange(refISO) {
   return { start: isoOf(start), end: isoOf(end) };
 }
 const num = (v) => (v === "" || v == null || isNaN(+v)) ? null : +v;
+const fmtDur = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  const mm = String(m).padStart(2, "0"), sss = String(ss).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${sss}` : `${mm}:${sss}`;
+};
+
+// cronómetro de la sesión (cuenta desde que empiezas hasta que guardas)
+let sessClockTimer = null;
+function tickSessClock() {
+  if (!draft) { stopSessionClock(); return; }
+  const el = document.getElementById("sessclockt");
+  if (el) el.textContent = fmtDur(Date.now() - draft.startedAt);
+}
+function startSessionClock() { if (!sessClockTimer) sessClockTimer = setInterval(tickSessClock, 1000); }
+function stopSessionClock() { if (sessClockTimer) { clearInterval(sessClockTimer); sessClockTimer = null; } }
+function sessClockHtml() {
+  const elapsed = draft && draft.startedAt ? Date.now() - draft.startedAt : 0;
+  return `<span class="sessclock" id="sessclock">${I.clock}<b id="sessclockt">${fmtDur(elapsed)}</b></span>`;
+}
 
 function toast(msg, err = false) {
   const t = document.createElement("div");
@@ -68,6 +105,7 @@ const I = {
   play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="currentColor"/></svg>',
   history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>',
   image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>',
   google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.45 14.97.5 12 .5A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.3 9.14 4.75 12 4.75z"/></svg>',
 };
 
@@ -260,7 +298,7 @@ function renderDays() {
 // ---------- sesión: un ejercicio por pantalla ----------
 let draft = null; // { dayId, date, idx, entries: { exId: {peso, reps:[], notas} } }
 
-function initDraft(dayId) { draft = { dayId, date: todayISO(), idx: 0, entries: {}, pendingCue: false }; }
+function initDraft(dayId) { draft = { dayId, date: todayISO(), idx: 0, entries: {}, pendingCue: false, startedAt: Date.now() }; }
 
 function captureStep(day) {
   if (!draft || draft.idx >= day.exercises.length) return;
@@ -306,7 +344,8 @@ function renderCue(day) {
 function renderStep(day) {
   const total = day.exercises.length;
   const i = draft.idx;
-  const ex = day.exercises[i];
+  const base = day.exercises[i];
+  const ex = resolveExercise(base);
   const sug = suggestion(ex);
   const last = lastEntryFor(ex.id);
   const saved = draft.entries[ex.id];
@@ -346,8 +385,8 @@ function renderStep(day) {
       <div class="unit"><input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(pesoVal)}" placeholder="—"><span class="suf">kg</span></div>
     </div>`;
 
-  // foto/demostración: imágenes de Free Exercise DB (2 fotogramas animados); si no hay, foto local; si no, marcador
-  const demoImgs = exerciseImages(ex.id);
+  // foto/demostración: si es variante no usamos los medios del original (aún sin imágenes propias)
+  const demoImgs = ex.isVariant ? [] : exerciseImages(ex.id);
   let photoHtml;
   if (demoImgs.length) {
     const frames = demoImgs.map((src, k) =>
@@ -359,9 +398,10 @@ function renderStep(day) {
           <span class="photo-src">${esc(exerciseSource(ex.id))}</span>
         </div>`;
   } else {
+    const localSrc = ex.isVariant ? `img/${ex.id}_v.jpg` : `img/${ex.id}.jpg`;
     photoHtml = `<div class="photo">
-          <img src="img/${ex.id}.jpg" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}')">
-          <div class="photo-ph">${I.image}<span>Foto del ejercicio</span></div>
+          <img src="${localSrc}" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}${ex.isVariant ? "_v" : ""}')">
+          <div class="photo-ph">${I.image}<span>${ex.isVariant ? "Foto de la variante" : "Foto del ejercicio"}</span></div>
         </div>`;
   }
 
@@ -369,7 +409,8 @@ function renderStep(day) {
     <div class="screen">
       <div class="step-head">
         <button class="linkbtn" id="exitsession">← Salir</button>
-        <div class="step-count">${i + 1} / ${total} · ${esc(day.name)}</div>
+        ${sessClockHtml()}
+        <div class="step-count">${i + 1} / ${total}</div>
       </div>
       <div class="stepper">${dots}</div>
 
@@ -381,14 +422,24 @@ function renderStep(day) {
           <div class="ex-scheme">${esc(ex.scheme)}<span class="rir">RIR ${esc(ex.rir)}</span></div>
         </div>
 
+        <div class="ex-meta">${I.clock} Descanso ${esc(ex.descanso || "—")} · Tempo ${esc(ex.tempo || "—")}</div>
+
         ${muscles}
 
+        ${base.variant ? `<div class="swap-note">${ex.isVariant
+            ? `↳ Variante de <b>${esc(base.name)}</b>`
+            : `Alternativa: <b>${esc(base.variant.name)}</b>`}</div>` : ""}
+
         <div class="ex-tools">
+          <a class="chip" href="${videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
           <button class="chip" data-ejec="${ex.id}">Cómo se hace</button>
+          <button class="chip" data-err="${ex.id}">Errores a evitar</button>
           ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
+          ${base.variant ? `<button class="chip swap" data-swap="${base.id}">${I.swap} ${ex.isVariant ? "Usar original" : "Cambiar ejercicio"}</button>` : ""}
         </div>
 
         <div class="ejec collapse" data-ejecbox="${ex.id}">${esc(ex.ejecucion)}</div>
+        <div class="ejec err collapse" data-errbox="${ex.id}">${esc(ex.error || "Sin indicaciones.")}</div>
 
         <div class="suggest ${sug.kind === "up" ? "up" : sug.kind === "cap" ? "cap" : ""}">
           <span class="ico">${sug.kind === "up" ? "↑" : sug.kind === "cap" ? "10kg" : sug.kind === "new" ? "•" : "→"}</span>
@@ -427,6 +478,14 @@ function renderStep(day) {
   $("#exitsession").onclick = () => go("#/days");
   document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; render(); window.scrollTo(0, 0); });
   document.querySelectorAll("[data-ejec]").forEach((b) => b.onclick = () => $(`[data-ejecbox="${b.dataset.ejec}"]`).classList.toggle("open"));
+  document.querySelectorAll("[data-err]").forEach((b) => b.onclick = () => $(`[data-errbox="${b.dataset.err}"]`).classList.toggle("open"));
+  document.querySelectorAll("[data-swap]").forEach((b) => b.onclick = () => {
+    captureStep(day);
+    const id = b.dataset.swap;
+    state.variants[id] = !state.variants[id];
+    saveVariants();
+    render(); window.scrollTo(0, 0);
+  });
   document.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => openTimer(+b.dataset.timer));
   $("#opentimer").onclick = () => openTimer(90);
   const prev = $("#prev"); if (prev) prev.onclick = () => { captureStep(day); draft.idx--; draft.pendingCue = false; render(); window.scrollTo(0, 0); };
@@ -437,14 +496,16 @@ function renderStep(day) {
     draft.pendingCue = !wasLast;   // sin pista antes del resumen
     render(); window.scrollTo(0, 0);
   };
+  startSessionClock();
 }
 
 function renderSessionSummary(day) {
-  const rows = day.exercises.map((ex, k) => {
+  const rows = day.exercises.map((base, k) => {
+    const ex = resolveExercise(base);
     const e = draft.entries[ex.id];
     const has = e && entryHasData(e);
     return `<button class="sumrow ${has ? "" : "skip"}" data-edit="${k}">
-        <div class="sumname">${esc(ex.name)}</div>
+        <div class="sumname">${esc(ex.name)}${ex.isVariant ? ` <span class="vbadge">variante</span>` : ""}</div>
         <div class="sumval">${has ? esc(formatSets(ex, e)) : "sin registrar"}</div>
         <span class="sumedit">Editar</span>
       </button>`;
@@ -454,7 +515,8 @@ function renderSessionSummary(day) {
     <div class="screen">
       <div class="step-head">
         <button class="linkbtn" id="backlast">← Volver</button>
-        <div class="step-count">Resumen · ${esc(day.name)}</div>
+        ${sessClockHtml()}
+        <div class="step-count">Resumen</div>
       </div>
       ${topbar("Sesión completa", "Revisa y guarda")}
       <label class="date" style="margin-bottom:14px">${I.clock}<input type="date" id="sdate" value="${draft.date}"></label>
@@ -470,6 +532,7 @@ function renderSessionSummary(day) {
   document.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => { draft.idx = +b.dataset.edit; render(); window.scrollTo(0, 0); });
   $("#sdate").onchange = (e) => { draft.date = e.target.value || todayISO(); };
   $("#save").onclick = () => saveSession(day);
+  startSessionClock();
 }
 
 async function saveSession(day) {
@@ -482,15 +545,17 @@ async function saveSession(day) {
   }
   if (Object.keys(entries).length === 0) { toast("Registra al menos un ejercicio", true); return; }
 
+  const durationSec = draft && draft.startedAt ? Math.round((Date.now() - draft.startedAt) / 1000) : null;
   btn.disabled = true; btn.textContent = "Guardando…";
   try {
     const ref = await addDoc(collection(db, "users", state.user.uid, "sessions"), {
-      dayId: day.id, dayName: day.name, date, entries, createdAt: serverTimestamp(),
+      dayId: day.id, dayName: day.name, date, entries, durationSec, createdAt: serverTimestamp(),
     });
-    state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries });
+    state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries, durationSec });
     state.sessions.sort((a, b) => (a.date < b.date ? 1 : -1));
+    stopSessionClock();
     draft = null;
-    toast("Sesión guardada 💪");
+    toast(durationSec != null ? `Sesión guardada · ${fmtDur(durationSec * 1000)} 💪` : "Sesión guardada 💪");
     go("#/days");
   } catch (e) {
     console.error(e);
@@ -577,7 +642,7 @@ function renderDayDetail(date) {
       const vol = entryVolume(e);
       return `<div class="detail-ex"><h4>${esc(name)}</h4><div class="vals">${esc(formatSets(ex, e))}${vol ? ` <span class="vol">· vol ${vol} kg·rep</span>` : ""}</div>${e.notas ? `<div class="notas">${esc(e.notas)}</div>` : ""}</div>`;
     }).join("") || `<p class="sub">Sesión sin datos.</p>`;
-    return `<div class="day-block"><div class="day-block-h">${esc(s.dayName)}</div>${rows}</div>`;
+    return `<div class="day-block"><div class="day-block-h">${esc(s.dayName)}${s.durationSec ? ` <span class="dur">${I.clock} ${fmtDur(s.durationSec * 1000)}</span>` : ""}</div>${rows}</div>`;
   }).join("");
   shell(`
     <div class="screen">

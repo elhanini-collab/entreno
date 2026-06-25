@@ -507,6 +507,18 @@ a { color: inherit; }
 /* paso a paso */
 .step-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .step-count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.sessclock {
+  display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono);
+  font-size: 13px; font-weight: 700; color: var(--accent);
+  background: rgba(245,166,35,0.10); border: 1px solid rgba(245,166,35,0.28);
+  padding: 3px 9px; border-radius: 99px;
+}
+.sessclock svg { width: 13px; height: 13px; }
+.day-block-h .dur {
+  display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono);
+  font-size: 12px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0;
+}
+.day-block-h .dur svg { width: 12px; height: 12px; vertical-align: middle; }
 .stepper { display: flex; gap: 6px; margin-bottom: 18px; }
 .stepper .dot {
   flex: 1; height: 4px; padding: 9px 0; border: none; border-radius: 99px;
@@ -534,6 +546,22 @@ a { color: inherit; }
 }
 .photo-ph svg { width: 30px; height: 30px; }
 .photo-ph span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; }
+
+/* meta (descanso/tempo), variante y errores */
+.ex-meta {
+  display: flex; align-items: center; gap: 6px; margin-top: 10px;
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+}
+.ex-meta svg { width: 13px; height: 13px; opacity: 0.7; }
+.swap-note { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.swap-note b { color: var(--ink); font-weight: 700; }
+.chip.swap { border-color: rgba(245,166,35,0.4); color: var(--accent); }
+.ejec.err {
+  border-top-color: rgba(245,166,35,0.4); color: var(--ink);
+  background: rgba(245,166,35,0.06); border-radius: var(--r-sm); padding: 12px; margin-top: 10px; border-top: none;
+}
+.ejec.err::before { content: "⚠ Evita"; display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+.vbadge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(245,166,35,0.4); border-radius: 99px; padding: 1px 6px; vertical-align: middle; }
 
 /* demostración animada (2 fotogramas de Free Exercise DB) */
 .photo.demo { background: #f3f1ee; }
