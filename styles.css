@@ -566,7 +566,7 @@ a { color: inherit; }
 /* demostración animada (2 fotogramas de Free Exercise DB) */
 .photo.demo { background: #f3f1ee; }
 .photo .fr {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   transform: none; object-position: center; z-index: 1;
 }
 .photo.demo .fr1 { opacity: 0; animation: demoflip 2.6s ease-in-out infinite; }
