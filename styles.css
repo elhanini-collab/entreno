@@ -651,3 +651,71 @@ a { color: inherit; }
 .collapse.open { display: block; }
 .ejec { color: var(--muted); font-size: 14px; line-height: 1.55; margin-top: 12px;
   padding-top: 12px; border-top: 1px dashed var(--line); }
+
+/* ====== Progreso: pestañas ====== */
+.segbar { display: flex; gap: 6px; background: var(--surface-2); padding: 4px; border-radius: 99px; margin: 4px 0 16px; }
+.segbar .seg { flex: 1; text-align: center; padding: 8px 6px; border-radius: 99px; font-size: 13px; font-weight: 700;
+  color: var(--muted); text-decoration: none; transition: background .15s, color .15s; }
+.segbar .seg.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+
+/* ====== Volumen semanal ====== */
+.wknav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.wknav .navbtn { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.wknav .navbtn.off { opacity: .3; cursor: default; }
+.wklabel { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.voltot { display: flex; gap: 18px; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
+.voltot b { color: var(--accent); font-family: var(--mono); font-size: 16px; }
+.vollist { display: flex; flex-direction: column; gap: 14px; }
+.volrow .vol-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.vol-name { font-weight: 700; }
+.vol-sets { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.volbar { height: 9px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.volbar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); border-radius: 99px; }
+.vol-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ====== Récords ====== */
+.reclist { display: flex; flex-direction: column; gap: 18px; }
+.rec-block .rec-day { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px; }
+.rec-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 12px; }
+.rec-row.muted { opacity: .45; }
+.rec-name { font-size: 14px; }
+.rec-val { font-family: var(--mono); font-weight: 700; color: var(--ink); text-align: right; white-space: nowrap; }
+.rec-val small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+
+/* ====== Fotos de progreso ====== */
+.addphoto { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 12px;
+  border: 1px dashed var(--line); background: var(--surface-2); color: var(--ink); font-weight: 700; cursor: pointer; margin-bottom: 16px; }
+.addphoto svg { width: 18px; height: 18px; }
+.addphoto.busy { opacity: .5; pointer-events: none; }
+.photogrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo-item { position: relative; margin: 0; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); }
+.photo-item img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+.photo-item figcaption { position: absolute; left: 0; bottom: 0; right: 0; padding: 6px 8px; font-family: var(--mono);
+  font-size: 11px; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.65)); }
+.photo-del { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 99px; border: none;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; }
+
+/* ====== Ajustes (Guía) ====== */
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.set-txt b { display: block; font-size: 15px; }
+.set-txt span { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.switch { width: 46px; height: 28px; border-radius: 99px; border: none; background: var(--surface-2); position: relative; cursor: pointer; flex: none; transition: background .15s; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 99px; background: var(--muted); transition: transform .15s, background .15s; }
+.switch.on { background: rgba(245,166,35,0.3); }
+.switch.on i { transform: translateX(18px); background: var(--accent); }
+.rem-cfg { padding: 12px 0 4px; }
+.rem-cfg.hidden { display: none; }
+.dowrow { display: flex; gap: 6px; margin-bottom: 12px; }
+.dowchip { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--muted); font-weight: 700; cursor: pointer; }
+.dowchip.on { border-color: var(--accent); color: var(--accent); background: rgba(245,166,35,0.10); }
+.timerow { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); }
+.timerow input { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); padding: 8px 10px; font-family: var(--mono); }
+.exprow { display: flex; gap: 10px; padding-top: 12px; }
+.exprow .btn { flex: 1; }
+
+/* ====== Editar/borrar sesión ====== */
+.block-actions { display: flex; gap: 8px; margin-top: 12px; }
+.chip.danger { border-color: rgba(229,90,90,0.4); color: #e87b7b; }

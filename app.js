@@ -8,7 +8,7 @@ import {
   getRedirectResult, onAuthStateChanged, signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, getDocs, query, orderBy, serverTimestamp,
+  getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDocs, query, orderBy, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
@@ -20,9 +20,12 @@ const CONFIGURED = !String(firebaseConfig.apiKey || "").startsWith("PEGA_TU");
 // ---------- estado ----------
 const state = {
   user: null,
-  sessions: [],      // [{id, dayId, dayName, date, entries:{exId:{peso,reps,notas}}}]
+  sessions: [],      // [{id, dayId, dayName, date, entries:{exId:{peso,reps,notas}}, durationSec}]
   loaded: false,
   variants: {},      // { exId: true }  ejercicios sustituidos por su variante
+  photos: [],        // fotos de progreso
+  progLoaded: false,
+  volWeek: null,     // semana visible en "Volumen"
 };
 
 function loadVariants() {
@@ -57,6 +60,7 @@ const fmtDate = (iso) => { const [y,m,dd] = iso.split("-"); return `${+dd} ${MES
 const fmtDateLong = (iso) => { const [y,m,dd] = iso.split("-"); return `${+dd} ${MES[+m-1]} ${y}`; };
 const monthLabel = (y, m) => `${MES_LARGO[m-1]} ${y}`;
 const isoOf = (d) => { const z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+const addDaysISO = (iso, n) => { const [y, m, dd] = iso.split("-").map(Number); const d = new Date(y, m - 1, dd); d.setDate(d.getDate() + n); return isoOf(d); };
 // semana lunes→domingo que contiene refISO
 function weekRange(refISO) {
   const [y, m, dd] = refISO.split("-").map(Number);
@@ -164,6 +168,164 @@ function suggestion(ex) {
   return { kind: "hold", text: `Última vez ${repsStr} reps${weight != null ? ` · ${weight} kg` : ""}. Mantén el peso y sube reps en las series flojas (objetivo ${ex.repHigh}).` };
 }
 
+// ========== helpers de funciones nuevas ==========
+// --- grupos musculares (a partir del músculo principal) ---
+function normTxt(s) { return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+function muscleGroup(mainMuscle) {
+  const t = normTxt(mainMuscle);
+  if (/pectoral/.test(t)) return "Pecho";
+  if (/dorsal|espalda|romboide|trapecio|redondo|lumbar/.test(t)) return "Espalda";
+  if (/deltoid|hombro|manguito/.test(t)) return "Hombros";
+  if (/triceps/.test(t)) return "Tríceps";
+  if (/biceps|braquial|braquiorradial|antebrazo/.test(t)) return "Bíceps";
+  if (/cuadriceps/.test(t)) return "Cuádriceps";
+  if (/isquio|femoral/.test(t)) return "Femoral";
+  if (/gluteo/.test(t)) return "Glúteo";
+  if (/gemelo|gastrocnemio|soleo|pantorrilla/.test(t)) return "Gemelos";
+  if (/core|abdomin|oblicuo|transverso/.test(t)) return "Core";
+  return "Otros";
+}
+const GROUP_ORDER = ["Pecho","Espalda","Hombros","Bíceps","Tríceps","Cuádriceps","Femoral","Glúteo","Gemelos","Core","Otros"];
+
+// --- volumen semanal por músculo ---
+function weeklyVolume(weekStartISO) {
+  const { start, end } = weekRange(weekStartISO);
+  const acc = {};
+  state.sessions.forEach((s) => {
+    if (s.date < start || s.date > end) return;
+    Object.entries(s.entries || {}).forEach(([exId, e]) => {
+      const ex = EXERCISE_INDEX[exId]; if (!ex) return;
+      const g = muscleGroup(ex.mainMuscle);
+      const reps = entryReps(e);
+      const sets = reps.length;
+      if (!acc[g]) acc[g] = { group: g, sets: 0, vol: 0 };
+      acc[g].sets += sets;
+      acc[g].vol += entryVolume(e);
+    });
+  });
+  return { start, end, groups: Object.values(acc).sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group)) };
+}
+
+// --- récords personales por ejercicio ---
+function bestFor(exId, excludeId) {
+  let weight = 0, volume = 0, repsMax = 0, dW = null, dV = null, dR = null;
+  state.sessions.forEach((s) => {
+    if (excludeId && s.id === excludeId) return;
+    const e = s.entries && s.entries[exId]; if (!e) return;
+    const w = workWeight(e), v = entryVolume(e), reps = entryReps(e);
+    const rm = reps.length ? Math.max(...reps) : 0;
+    if (w != null && w > weight) { weight = w; dW = s.date; }
+    if (v > volume) { volume = v; dV = s.date; }
+    if (rm > repsMax) { repsMax = rm; dR = s.date; }
+  });
+  return { weight, volume, repsMax, dW, dV, dR };
+}
+
+// --- descanso prescrito → segundos (extremo bajo del rango) ---
+function restSeconds(ex) {
+  const d = (ex && ex.descanso) || "";
+  const mn = d.match(/(\d+)\s*(?:[-–]\s*\d+)?\s*min/i);
+  if (mn) return parseInt(mn[1], 10) * 60;
+  const sc = d.match(/(\d+)\s*s/i);
+  if (sc) return parseInt(sc[1], 10);
+  return 90;
+}
+
+// --- auto-descanso (preferencia local) ---
+function autoRestOn() { try { return localStorage.getItem("carga_autorest") !== "0"; } catch (_) { return true; } }
+function setAutoRest(v) { try { localStorage.setItem("carga_autorest", v ? "1" : "0"); } catch (_) {} }
+
+// --- exportar / backup ---
+function download(name, text, mime) {
+  const blob = new Blob([text], { type: mime + ";charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+function csvCell(v) { v = String(v == null ? "" : v); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCSV() {
+  const rows = [["fecha","dia","ejercicio","peso_kg","reps","volumen_kgrep","duracion_seg","notas"]];
+  [...state.sessions].sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((s) => {
+    Object.entries(s.entries || {}).forEach(([exId, e]) => {
+      const ex = EXERCISE_INDEX[exId];
+      rows.push([s.date, s.dayName, ex ? ex.name : exId, workWeight(e) == null ? "" : workWeight(e),
+        entryReps(e).join(" "), entryVolume(e), s.durationSec || "", (e.notas || "").replace(/\s+/g, " ")]);
+    });
+  });
+  const csv = rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
+  download(`carga-${todayISO()}.csv`, "\ufeff" + csv, "text/csv");
+}
+function exportJSON() {
+  const data = { app: "Carga", exportedAt: new Date().toISOString(),
+    variants: state.variants, sessions: state.sessions };
+  download(`carga-backup-${todayISO()}.json`, JSON.stringify(data, null, 2), "application/json");
+}
+
+// --- recordatorios (mejor esfuerzo mientras la app está abierta) ---
+const DEFAULT_REM = { enabled: false, days: [0, 1, 3, 4], time: "18:00" };
+function loadReminders() { try { return Object.assign({}, DEFAULT_REM, JSON.parse(localStorage.getItem("carga_reminders") || "{}")); } catch (_) { return { ...DEFAULT_REM }; } }
+function saveReminders(r) { try { localStorage.setItem("carga_reminders", JSON.stringify(r)); } catch (_) {} }
+let reminderTimer = null;
+function applyReminders() {
+  if (reminderTimer) { clearInterval(reminderTimer); reminderTimer = null; }
+  if (!loadReminders().enabled) return;
+  reminderTimer = setInterval(reminderTick, 30000); reminderTick();
+}
+function reminderTick() {
+  const r = loadReminders();
+  if (!r.enabled || !("Notification" in window) || Notification.permission !== "granted") return;
+  const now = new Date(); const wd = (now.getDay() + 6) % 7;
+  if (!r.days.includes(wd)) return;
+  const [hh, mm] = r.time.split(":").map(Number);
+  if (now.getHours() !== hh || now.getMinutes() !== mm) return;
+  const key = "carga_rem_" + todayISO();
+  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (_) {}
+  notify("Toca entrenar 💪", "Tienes sesión hoy. Abre Carga y dale.");
+}
+function notify(title, body) {
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body, icon: "icons/icon-192.png" }));
+    } else if ("Notification" in window) { new Notification(title, { body }); }
+  } catch (_) {}
+}
+
+// --- fotos de progreso (guardadas en Firestore, redimensionadas) ---
+async function loadProgress() {
+  state.progLoaded = false;
+  try {
+    const snap = await getDocs(query(collection(db, "users", state.user.uid, "progress"), orderBy("date", "desc")));
+    state.photos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) { console.error(e); state.photos = []; }
+  state.progLoaded = true;
+}
+function resizeImage(file, max = 720, q = 0.7) {
+  return new Promise((res, rej) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const sc = Math.min(1, max / Math.max(w, h)); w = Math.round(w * sc); h = Math.round(h * sc);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", q));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("img")); };
+    img.src = url;
+  });
+}
+async function addPhoto(file, dateISO) {
+  const img = await resizeImage(file);
+  const data = { date: dateISO || todayISO(), img, createdAt: serverTimestamp() };
+  const ref = await addDoc(collection(db, "users", state.user.uid, "progress"), data);
+  state.photos.unshift({ id: ref.id, ...data });
+  state.photos.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+async function removePhoto(id) {
+  await deleteDoc(doc(db, "users", state.user.uid, "progress", id));
+  state.photos = state.photos.filter((p) => p.id !== id);
+}
+
 // ---------- imagen del ejercicio (fallback jpg → png → marcador) ----------
 window.imgFallback = function (el, id) {
   if (!el.dataset.tried) { el.dataset.tried = "1"; el.src = "img/" + id + ".png"; return; }
@@ -176,7 +338,7 @@ window.imgFallback = function (el, id) {
 function parseHash() {
   const h = location.hash.replace(/^#\/?/, "");
   const parts = h.split("/").filter(Boolean);
-  return { name: parts[0] || "days", a: parts[1] || null };
+  return { name: parts[0] || "days", a: parts[1] || null, b: parts[2] || null };
 }
 function go(path) { location.hash = path; }
 window.addEventListener("hashchange", render);
@@ -192,7 +354,7 @@ function render() {
     case "history": return renderHistory(r.a);
     case "day": return renderDayDetail(r.a);
     case "log": return renderLogDetail(r.a);
-    case "progress": return renderProgress(r.a);
+    case "progress": return renderProgress(r.a, r.b);
     case "principios": return renderPrinciples();
     default: return renderDays();
   }
@@ -354,7 +516,9 @@ function renderStep(day) {
 
   const pesoVal = saved && saved.peso != null ? saved.peso
     : (last && workWeight(last.entry) != null ? workWeight(last.entry) : "");
-  const repVal = (k) => (saved && saved.reps && saved.reps[k] != null ? saved.reps[k] : "");
+  const lastRepsRaw = last && last.entry && Array.isArray(last.entry.reps) ? last.entry.reps : [];
+  const repVal = (k) => (saved && saved.reps && saved.reps[k] != null) ? saved.reps[k]
+    : (lastRepsRaw[k] != null ? lastRepsRaw[k] : "");
 
   const lastReps = last ? entryReps(last.entry) : [];
   const gate = lastReps.length ? Math.min(...lastReps) : null;
@@ -487,7 +651,11 @@ function renderStep(day) {
     render(); window.scrollTo(0, 0);
   });
   document.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => openTimer(+b.dataset.timer));
-  $("#opentimer").onclick = () => openTimer(90);
+  $("#opentimer").onclick = () => openTimer(restSeconds(ex));
+  // auto-descanso: al anotar una serie, abre y arranca el temporizador con el descanso del ejercicio
+  document.querySelectorAll('.exercise [data-field="reps"]').forEach((inp) => inp.addEventListener("change", () => {
+    if (autoRestOn() && inp.value.trim() !== "") { openTimer(restSeconds(ex)); startTick(); }
+  }));
   const prev = $("#prev"); if (prev) prev.onclick = () => { captureStep(day); draft.idx--; draft.pendingCue = false; render(); window.scrollTo(0, 0); };
   $("#next").onclick = () => {
     captureStep(day);
@@ -511,18 +679,19 @@ function renderSessionSummary(day) {
       </button>`;
   }).join("");
 
+  const editing = !!(draft && draft.editingId);
   shell(`
     <div class="screen">
       <div class="step-head">
         <button class="linkbtn" id="backlast">← Volver</button>
-        ${sessClockHtml()}
+        ${editing ? `<span class="step-count">Editando</span>` : sessClockHtml()}
         <div class="step-count">Resumen</div>
       </div>
-      ${topbar("Sesión completa", "Revisa y guarda")}
+      ${topbar(editing ? "Editar sesión" : "Sesión completa", editing ? "Corrige y actualiza" : "Revisa y guarda")}
       <label class="date" style="margin-bottom:14px">${I.clock}<input type="date" id="sdate" value="${draft.date}"></label>
       <div class="sumlist">${rows}</div>
       <div class="save-row">
-        <button class="btn btn-primary" id="save">Guardar sesión</button>
+        <button class="btn btn-primary" id="save">${editing ? "Actualizar sesión" : "Guardar sesión"}</button>
         <p class="save-hint">Toca un ejercicio para editarlo. Lo que dejes sin registrar no se guarda.</p>
       </div>
     </div>`, "days");
@@ -538,6 +707,7 @@ function renderSessionSummary(day) {
 async function saveSession(day) {
   const btn = $("#save");
   const date = (draft && draft.date) || todayISO();
+  const editingId = draft && draft.editingId;
   const entries = {};
   for (const ex of day.exercises) {
     const e = draft.entries[ex.id];
@@ -545,18 +715,43 @@ async function saveSession(day) {
   }
   if (Object.keys(entries).length === 0) { toast("Registra al menos un ejercicio", true); return; }
 
-  const durationSec = draft && draft.startedAt ? Math.round((Date.now() - draft.startedAt) / 1000) : null;
+  // récords: comparar con lo mejor previo (excluyendo la propia sesión si se edita)
+  const prNames = [];
+  for (const [exId, e] of Object.entries(entries)) {
+    const ex = EXERCISE_INDEX[exId]; if (!ex) continue;
+    const b = bestFor(exId, editingId);
+    const reps = entryReps(e), rm = reps.length ? Math.max(...reps) : 0;
+    const isPR = ex.unit === "seg"
+      ? rm > (b.repsMax || 0)
+      : ((workWeight(e) != null && workWeight(e) > (b.weight || 0)) || entryVolume(e) > (b.volume || 0));
+    if (isPR) prNames.push(ex.name);
+  }
+
+  const durationSec = editingId
+    ? (draft.baseDuration ?? null)
+    : (draft && draft.startedAt ? Math.round((Date.now() - draft.startedAt) / 1000) : null);
   btn.disabled = true; btn.textContent = "Guardando…";
   try {
-    const ref = await addDoc(collection(db, "users", state.user.uid, "sessions"), {
-      dayId: day.id, dayName: day.name, date, entries, durationSec, createdAt: serverTimestamp(),
-    });
-    state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries, durationSec });
+    if (editingId) {
+      await updateDoc(doc(db, "users", state.user.uid, "sessions", editingId),
+        { dayId: day.id, dayName: day.name, date, entries, durationSec });
+      const idx = state.sessions.findIndex((s) => s.id === editingId);
+      if (idx >= 0) state.sessions[idx] = { id: editingId, dayId: day.id, dayName: day.name, date, entries, durationSec };
+    } else {
+      const ref = await addDoc(collection(db, "users", state.user.uid, "sessions"), {
+        dayId: day.id, dayName: day.name, date, entries, durationSec, createdAt: serverTimestamp(),
+      });
+      state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries, durationSec });
+    }
     state.sessions.sort((a, b) => (a.date < b.date ? 1 : -1));
     stopSessionClock();
     draft = null;
-    toast(durationSec != null ? `Sesión guardada · ${fmtDur(durationSec * 1000)} 💪` : "Sesión guardada 💪");
-    go("#/days");
+    if (prNames.length) {
+      toast(`🎉 ¡Récord en ${prNames.slice(0, 2).join(" y ")}${prNames.length > 2 ? "…" : ""}!`);
+    } else {
+      toast(editingId ? "Sesión actualizada" : (durationSec != null ? `Sesión guardada · ${fmtDur(durationSec * 1000)} 💪` : "Sesión guardada 💪"));
+    }
+    go(editingId ? "#/day/" + date : "#/days");
   } catch (e) {
     console.error(e);
     toast("No se pudo guardar. Revisa las reglas de Firestore.", true);
@@ -642,7 +837,14 @@ function renderDayDetail(date) {
       const vol = entryVolume(e);
       return `<div class="detail-ex"><h4>${esc(name)}</h4><div class="vals">${esc(formatSets(ex, e))}${vol ? ` <span class="vol">· vol ${vol} kg·rep</span>` : ""}</div>${e.notas ? `<div class="notas">${esc(e.notas)}</div>` : ""}</div>`;
     }).join("") || `<p class="sub">Sesión sin datos.</p>`;
-    return `<div class="day-block"><div class="day-block-h">${esc(s.dayName)}${s.durationSec ? ` <span class="dur">${I.clock} ${fmtDur(s.durationSec * 1000)}</span>` : ""}</div>${rows}</div>`;
+    return `<div class="day-block">
+      <div class="day-block-h">${esc(s.dayName)}${s.durationSec ? ` <span class="dur">${I.clock} ${fmtDur(s.durationSec * 1000)}</span>` : ""}</div>
+      ${rows}
+      <div class="block-actions">
+        <button class="chip" data-editses="${s.id}">${I.swap} Editar</button>
+        <button class="chip danger" data-delses="${s.id}">Borrar</button>
+      </div>
+    </div>`;
   }).join("");
   shell(`
     <div class="screen">
@@ -652,6 +854,33 @@ function renderDayDetail(date) {
     </div>`, "history");
   bindCommon();
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+  document.querySelectorAll("[data-editses]").forEach((b) => b.onclick = () => editSession(b.dataset.editses));
+  document.querySelectorAll("[data-delses]").forEach((b) => b.onclick = () => deleteSession(b.dataset.delses, date));
+}
+
+// editar: carga la sesión en el asistente y al guardar actualiza el documento
+function editSession(id) {
+  const s = state.sessions.find((x) => x.id === id);
+  if (!s) return;
+  const day = DAYS.find((d) => d.id === s.dayId);
+  if (!day) return toast("Esa sesión usa una rutina antigua", true);
+  draft = {
+    dayId: s.dayId, date: s.date, idx: 0, pendingCue: false, startedAt: Date.now(),
+    editingId: s.id, baseDuration: s.durationSec || null,
+    entries: JSON.parse(JSON.stringify(s.entries || {})),
+  };
+  go("#/session/" + s.dayId);
+}
+
+async function deleteSession(id, date) {
+  if (!confirm("¿Borrar esta sesión? No se puede deshacer.")) return;
+  try {
+    await deleteDoc(doc(db, "users", state.user.uid, "sessions", id));
+    state.sessions = state.sessions.filter((s) => s.id !== id);
+    toast("Sesión borrada");
+    const stillThatDay = state.sessions.some((s) => s.date === date);
+    go(stillThatDay ? "#/day/" + date : "#/history/" + date.slice(0, 7));
+  } catch (e) { console.error(e); toast("No se pudo borrar", true); }
 }
 
 function renderLogDetail(id) {
@@ -723,17 +952,35 @@ function lineChart({ pts, time }, ex) {
     </div>`;
 }
 
-function renderProgress(exId) {
-  const allEx = DAYS.flatMap((d) => d.exercises.map((e) => ({ ...e, dayName: d.name })));
-  const current = exId && EXERCISE_INDEX[exId] ? exId : allEx[0].id;
+function progSeg(active, exId) {
+  const exHref = "#/progress/ex/" + (exId || "");
+  const item = (key, href, label) => `<a href="${href}" class="seg ${active === key ? "on" : ""}">${label}</a>`;
+  return `<div class="segbar">
+    ${item("ex", exHref, "Ejercicio")}
+    ${item("vol", "#/progress/vol", "Volumen")}
+    ${item("pr", "#/progress/pr", "Récords")}
+    ${item("fotos", "#/progress/fotos", "Fotos")}
+  </div>`;
+}
+
+function renderProgress(sub, arg) {
+  const tabs = ["ex", "vol", "pr", "fotos"];
+  let tab = "ex", exId = null;
+  if (tabs.includes(sub)) { tab = sub; if (sub === "ex") exId = arg; }
+  else if (sub) { tab = "ex"; exId = sub; } // compat con #/progress/<id>
+
+  if (tab === "vol") return renderProgVolume();
+  if (tab === "pr") return renderProgRecords();
+  if (tab === "fotos") return renderProgPhotos();
+  return renderProgExercise(exId);
+}
+
+function renderProgExercise(exId) {
+  const current = exId && EXERCISE_INDEX[exId] ? exId : DAYS[0].exercises[0].id;
   const ex = EXERCISE_INDEX[current];
   const data = seriesFor(current);
-
-  // stats
   const withData = data.pts;
-  const bestValue = withData.reduce((m, p) => (p.value > m ? p.value : m), 0);
-  const bestVol = withData.reduce((m, p) => (p.volume > m ? p.volume : m), 0);
-  const bestSet = withData.reduce((m, p) => (p.value > m ? p.value : m), 0); // mejor serie (peso o seg)
+  const best = bestFor(current);
 
   const options = DAYS.map((d) =>
     `<optgroup label="${esc(d.name)}">` +
@@ -741,36 +988,191 @@ function renderProgress(exId) {
     `</optgroup>`).join("");
 
   const stat3 = data.time
-    ? `<div class="stat"><div class="k">Mejor serie</div><div class="v">${bestSet || "—"}<small> s</small></div></div>`
-    : `<div class="stat"><div class="k">Mejor volumen</div><div class="v">${bestVol || "—"}<small> kg·rep</small></div></div>`;
+    ? `<div class="stat"><div class="k">Mejor aguante</div><div class="v">${best.repsMax || "—"}<small> s</small></div></div>`
+    : `<div class="stat"><div class="k">Mejor volumen</div><div class="v">${best.volume || "—"}<small> kg·rep</small></div></div>`;
 
   shell(`
     <div class="screen">
       ${topbar("Progreso", "Tu evolución")}
+      ${progSeg("ex", current)}
       <select class="exselect" id="exsel">${options}</select>
       ${lineChart(data, ex)}
       <div class="statgrid">
         <div class="stat"><div class="k">Sesiones</div><div class="v">${withData.length}</div></div>
-        <div class="stat"><div class="k">${data.time ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${bestValue || "—"}<small> ${data.time ? "s" : "kg"}</small></div></div>
+        <div class="stat"><div class="k">${data.time ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${(data.time ? best.repsMax : best.weight) || "—"}<small> ${data.time ? "s" : "kg"}</small></div></div>
         ${stat3}
       </div>
       <div class="divider"><span class="label">Objetivo</span><span class="rule"></span></div>
       <p class="sub">${esc(ex.scheme)} · RIR ${esc(ex.rir)}. ${esc(suggestion(ex).text)}</p>
     </div>`, "progress");
   bindCommon();
-  $("#exsel").onchange = (e) => go("#/progress/" + e.target.value);
+  $("#exsel").onchange = (e) => go("#/progress/ex/" + e.target.value);
+}
+
+function renderProgVolume() {
+  const ref = state.volWeek || todayISO();
+  const { start, end, groups } = weeklyVolume(ref);
+  const totalSets = groups.reduce((a, g) => a + g.sets, 0);
+  const totalVol = groups.reduce((a, g) => a + g.vol, 0);
+  const maxSets = groups.reduce((m, g) => Math.max(m, g.sets), 0) || 1;
+  const thisMon = weekRange(todayISO()).start;
+  const atCurrent = start >= thisMon;
+
+  const rows = groups.length ? groups.map((g) => `
+    <div class="volrow">
+      <div class="vol-h"><span class="vol-name">${g.group}</span><span class="vol-sets">${g.sets} series</span></div>
+      <div class="volbar"><div class="volbar-fill" style="width:${Math.round(g.sets / maxSets * 100)}%"></div></div>
+      <div class="vol-sub">${g.vol ? g.vol + " kg·rep" : "—"}</div>
+    </div>`).join("") : `<div class="empty"><p>Sin entrenos esta semana.</p></div>`;
+
+  shell(`
+    <div class="screen">
+      ${topbar("Progreso", "Tu evolución")}
+      ${progSeg("vol")}
+      <div class="wknav">
+        <button class="navbtn" id="wkprev">‹</button>
+        <div class="wklabel">${fmtDate(start)} – ${fmtDate(end)}</div>
+        <button class="navbtn ${atCurrent ? "off" : ""}" id="wknext" ${atCurrent ? "disabled" : ""}>›</button>
+      </div>
+      <div class="voltot"><span><b>${totalSets}</b> series</span><span><b>${totalVol}</b> kg·rep</span></div>
+      <div class="vollist">${rows}</div>
+      <p class="save-hint" style="margin-top:14px">Series efectivas por grupo muscular (músculo principal). Para hipertrofia, ~10-20 series semanales por grupo suele ir bien.</p>
+    </div>`, "progress");
+  bindCommon();
+  $("#wkprev").onclick = () => { state.volWeek = addDaysISO(start, -7); render(); };
+  const nx = $("#wknext"); if (nx) nx.onclick = () => { if (!atCurrent) { state.volWeek = addDaysISO(start, 7); render(); } };
+}
+
+function renderProgRecords() {
+  const blocks = DAYS.map((d) => {
+    const rows = d.exercises.map((ex) => {
+      const b = bestFor(ex.id);
+      const has = b.weight || b.volume || b.repsMax;
+      const val = ex.unit === "seg"
+        ? (b.repsMax ? `${b.repsMax} s` : "—")
+        : (b.weight ? `${b.weight} kg` : "—");
+      const sub = ex.unit === "seg" ? "" : (b.volume ? `${b.volume} kg·rep` : "");
+      return `<div class="rec-row ${has ? "" : "muted"}">
+        <div class="rec-name">${esc(ex.name)}</div>
+        <div class="rec-val">${val}${sub ? `<small>${sub}</small>` : ""}</div>
+      </div>`;
+    }).join("");
+    return `<div class="rec-block"><div class="rec-day">${esc(d.name)}</div>${rows}</div>`;
+  }).join("");
+
+  shell(`
+    <div class="screen">
+      ${topbar("Progreso", "Tu evolución")}
+      ${progSeg("pr")}
+      <div class="reclist">${blocks}</div>
+      <p class="save-hint" style="margin-top:14px">Tu mejor marca por ejercicio: peso máximo (o aguante en isométricos) y mejor volumen en una sesión.</p>
+    </div>`, "progress");
+  bindCommon();
+}
+
+function renderProgPhotos() {
+  if (!state.progLoaded) loadProgress().then(() => { if (parseHash().name === "progress") render(); });
+  const grid = state.photos.length ? state.photos.map((p) => `
+    <figure class="photo-item">
+      <img src="${p.img}" alt="${esc(p.date)}">
+      <figcaption>${fmtDate(p.date)}</figcaption>
+      <button class="photo-del" data-del="${p.id}" aria-label="Borrar">×</button>
+    </figure>`).join("") : `<div class="empty"><p>Aún no hay fotos. Añade la primera para ver tu evolución.</p></div>`;
+
+  shell(`
+    <div class="screen">
+      ${topbar("Progreso", "Tu evolución")}
+      ${progSeg("fotos")}
+      <label class="addphoto" id="addlbl">
+        ${I.image}<span>Añadir foto</span>
+        <input type="file" accept="image/*" id="photoin" hidden>
+      </label>
+      <div class="photogrid">${state.progLoaded ? grid : `<div class="empty"><p>Cargando…</p></div>`}</div>
+      <p class="save-hint" style="margin-top:14px">Las fotos se guardan en tu cuenta (comprimidas). Una cada 2-4 semanas con la misma luz y pose ayuda a ver cambios.</p>
+    </div>`, "progress");
+  bindCommon();
+  const input = $("#photoin");
+  if (input) input.onchange = async (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const lbl = $("#addlbl"); if (lbl) lbl.classList.add("busy");
+    try { await addPhoto(file); toast("Foto guardada"); }
+    catch (err) { console.error(err); toast("No se pudo guardar la foto", true); }
+    render();
+  };
+  document.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+    if (!confirm("¿Borrar esta foto?")) return;
+    try { await removePhoto(b.dataset.del); toast("Foto borrada"); }
+    catch (err) { console.error(err); toast("No se pudo borrar", true); }
+    render();
+  });
 }
 
 function renderPrinciples() {
   const cards = PRINCIPLES.map((p) =>
     `<div class="pcard"><h3>${esc(p.title)}</h3><p>${esc(p.body)}</p></div>`).join("");
+  const rem = loadReminders();
+  const DOW = ["L", "M", "X", "J", "V", "S", "D"];
+  const dayChips = DOW.map((d, i) =>
+    `<button class="dowchip ${rem.days.includes(i) ? "on" : ""}" data-dow="${i}">${d}</button>`).join("");
+
   shell(`
     <div class="screen">
       ${topbar("Guía", "Principios de la rutina")}
       <div class="princ">${cards}</div>
+
+      <div class="divider"><span class="label">Ajustes</span><span class="rule"></span></div>
+
+      <div class="setrow">
+        <div class="set-txt"><b>Auto-descanso</b><span>Abre el temporizador con el descanso del ejercicio al anotar una serie.</span></div>
+        <button class="switch ${autoRestOn() ? "on" : ""}" id="swauto" role="switch" aria-checked="${autoRestOn()}"><i></i></button>
+      </div>
+
+      <div class="setrow">
+        <div class="set-txt"><b>Recordatorios</b><span>Aviso los días de entreno (mientras la app esté abierta o en segundo plano reciente).</span></div>
+        <button class="switch ${rem.enabled ? "on" : ""}" id="swrem" role="switch" aria-checked="${rem.enabled}"><i></i></button>
+      </div>
+      <div class="rem-cfg ${rem.enabled ? "" : "hidden"}" id="remcfg">
+        <div class="dowrow">${dayChips}</div>
+        <label class="timerow">Hora <input type="time" id="remtime" value="${rem.time}"></label>
+      </div>
+
+      <div class="setrow">
+        <div class="set-txt"><b>Exportar / backup</b><span>Descarga tus entrenos para analizarlos o guardarlos.</span></div>
+      </div>
+      <div class="exprow">
+        <button class="btn btn-ghost" id="expcsv">CSV</button>
+        <button class="btn btn-ghost" id="expjson">Backup JSON</button>
+      </div>
+
       <p class="save-hint" style="margin-top:18px">Los vídeos abren una búsqueda en YouTube con buenas demostraciones de cada ejercicio.</p>
     </div>`, "principios");
   bindCommon();
+
+  // auto-descanso
+  $("#swauto").onclick = () => { setAutoRest(!autoRestOn()); render(); };
+
+  // recordatorios
+  $("#swrem").onclick = async () => {
+    const r = loadReminders();
+    if (!r.enabled) {
+      if ("Notification" in window && Notification.permission !== "granted") {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") { toast("Permiso de notificaciones denegado", true); return; }
+      } else if (!("Notification" in window)) { toast("Tu navegador no soporta notificaciones", true); return; }
+      r.enabled = true;
+    } else { r.enabled = false; }
+    saveReminders(r); applyReminders(); render();
+  };
+  document.querySelectorAll("[data-dow]").forEach((b) => b.onclick = () => {
+    const r = loadReminders(); const i = +b.dataset.dow;
+    r.days = r.days.includes(i) ? r.days.filter((x) => x !== i) : [...r.days, i].sort();
+    saveReminders(r); applyReminders(); render();
+  });
+  const rt = $("#remtime"); if (rt) rt.onchange = (e) => { const r = loadReminders(); r.time = e.target.value || "18:00"; saveReminders(r); applyReminders(); };
+
+  // exportar
+  $("#expcsv").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportCSV(); };
+  $("#expjson").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportJSON(); };
 }
 
 // ---------- temporizador ----------
@@ -891,9 +1293,12 @@ async function boot() {
     state.user = user || null;
     if (user) {
       await loadSessions();
+      loadProgress();      // en segundo plano
+      applyReminders();
       if (!location.hash) go("#/days"); else render();
     } else {
-      state.loaded = false; state.sessions = [];
+      state.loaded = false; state.sessions = []; state.photos = []; state.progLoaded = false;
+      if (reminderTimer) { clearInterval(reminderTimer); reminderTimer = null; }
       render();
     }
   });
