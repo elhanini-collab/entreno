@@ -719,3 +719,69 @@ a { color: inherit; }
 /* ====== Editar/borrar sesión ====== */
 .block-actions { display: flex; gap: 8px; margin-top: 12px; }
 .chip.danger { border-color: rgba(229,90,90,0.4); color: #e87b7b; }
+
+/* ====== Panel de inicio ====== */
+.homepanel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }
+.hp-stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px; text-align: left; }
+.hp-stat.go { cursor: pointer; border-color: rgba(245,166,35,0.4); }
+.hp-big { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1; }
+.hp-lbl { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* ====== Vista previa del día ====== */
+.pp-meta { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+.pplist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.pp-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; }
+.pp-main { flex: 1; min-width: 0; }
+.pp-name { font-weight: 700; }
+.pp-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pp-last { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+.pp-row .chip.swap { padding: 8px; }
+
+/* ====== Etiquetas y favorito (ejercicio) ====== */
+.tagrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.tag { font-family: var(--mono); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 99px; padding: 3px 8px; }
+.tag.fat-alta { color: #e87b7b; border-color: rgba(229,90,90,0.4); }
+.tag.fat-media { color: var(--accent); border-color: rgba(245,166,35,0.4); }
+.fav { margin-left: auto; background: none; border: none; color: var(--accent); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.fav.on { color: var(--accent); }
+.warmup { margin-top: 10px; display: flex; align-items: flex-start; gap: 6px; font-size: 13px; color: var(--ink);
+  background: rgba(245,166,35,0.08); border-radius: var(--r-sm); padding: 10px 12px; }
+.warmup svg { width: 14px; height: 14px; flex: none; margin-top: 2px; opacity: .8; }
+
+/* ====== Cómo se hace (guía) ====== */
+.ejec .pasos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.ejec .pasos li { line-height: 1.5; }
+.ejec .howline { margin: 10px 0 0; }
+.ejec .howline b { color: var(--ink); }
+
+/* ====== Progreso: 1RM, volumen objetivo, tendencia ====== */
+.e1note { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+.volbar-fill.near { background: linear-gradient(90deg, var(--accent), var(--accent-strong)); }
+.volbar-fill.hit { background: #5bb98c; }
+.trend { display: flex; align-items: flex-end; gap: 6px; height: 60px; padding: 4px 0; }
+.trend-bar { flex: 1; background: var(--surface-2); border-radius: 4px 4px 0 0; min-height: 4px; }
+.trend-bar.now { background: var(--accent); }
+
+/* ====== Comparador de fotos ====== */
+.photo-actions { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+.photo-actions .addphoto { margin-bottom: 0; }
+.cmpwrap { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cmp-item { margin: 0; }
+.cmp-item img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: var(--r-sm); display: block; }
+.cmp-item figcaption { margin-top: 6px; }
+.cmp-item select { width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; color: var(--ink); padding: 6px; font-family: var(--mono); font-size: 12px; }
+
+/* ====== Chequeo rápido ====== */
+.checkcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px; margin: 8px 0 4px; }
+.check-h { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.check-h span { font-weight: 400; color: var(--muted); font-size: 11px; }
+.checkrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+.check-lbl { font-size: 14px; color: var(--muted); }
+.check-dots { display: flex; gap: 6px; }
+.ckdot { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-family: var(--mono); cursor: pointer; }
+.ckdot.on { border-color: var(--accent); background: rgba(245,166,35,0.12); color: var(--accent); }
+.check-line { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+/* importar (label como botón) */
+#impbtn { cursor: pointer; }

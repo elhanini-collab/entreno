@@ -12,7 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { firebaseConfig } from "./firebase-config.js";
-import { DAYS, PRINCIPLES, EXERCISE_INDEX, videoUrl, DUMBBELL_CAP_KG, exerciseImages, exerciseSource } from "./routine.js";
+import { DAYS, PRINCIPLES, EXERCISE_INDEX, videoUrl, DUMBBELL_CAP_KG, exerciseImages, exerciseSource, VOLUME_TARGET } from "./routine.js";
 
 const root = document.getElementById("app");
 const CONFIGURED = !String(firebaseConfig.apiKey || "").startsWith("PEGA_TU");
@@ -23,6 +23,7 @@ const state = {
   sessions: [],      // [{id, dayId, dayName, date, entries:{exId:{peso,reps,notas}}, durationSec}]
   loaded: false,
   variants: {},      // { exId: true }  ejercicios sustituidos por su variante
+  favorites: {},     // { exId: true }  ejercicios marcados como favoritos
   photos: [],        // fotos de progreso
   progLoaded: false,
   volWeek: null,     // semana visible en "Volumen"
@@ -45,6 +46,7 @@ function resolveExercise(base) {
 
 let auth = null, db = null;
 state.variants = loadVariants();
+state.favorites = loadFavorites();
 
 // ---------- utilidades ----------
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -72,6 +74,15 @@ function weekRange(refISO) {
 }
 const num = (v) => (v === "" || v == null || isNaN(+v)) ? null : +v;
 const fmtSets = (n) => Number.isInteger(n) ? String(n) : (Math.round(n * 2) / 2).toFixed(1);
+const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function howToHtml(ex) {
+  const pasos = (ex.pasos && ex.pasos.length)
+    ? `<ol class="pasos">${ex.pasos.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>`
+    : `<p>${esc(ex.ejecucion || "")}</p>`;
+  const resp = ex.respiracion ? `<p class="howline"><b>Respiración:</b> ${esc(ex.respiracion)}</p>` : "";
+  const good = ex.repBuena ? `<p class="howline"><b>Buena rep:</b> ${esc(ex.repBuena)}</p>` : "";
+  return pasos + resp + good;
+}
 const fmtDur = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
@@ -183,7 +194,15 @@ const TOKEN_GROUP = {
 };
 const GROUP_ORDER = ["Pecho","Espalda","Hombros","Bíceps","Tríceps","Antebrazo","Cuádriceps","Femoral","Glúteo","Gemelos","Core","Otros"];
 
-// --- volumen semanal por músculo (principal = 1 serie, secundarios = ½ serie) ---
+// objetivo de volumen por grupo (sumando los tokens del plan)
+const GROUP_TARGET = (() => {
+  const t = {};
+  Object.entries(VOLUME_TARGET || {}).forEach(([tok, v]) => { const g = TOKEN_GROUP[tok] || "Otros"; t[g] = (t[g] || 0) + v; });
+  Object.keys(t).forEach((g) => { t[g] = Math.round(t[g] * 2) / 2; });
+  return t;
+})();
+
+// --- volumen semanal por músculo (usa el estímulo por serie del plan) ---
 function weeklyVolume(weekStartISO) {
   const { start, end } = weekRange(weekStartISO);
   const acc = {};
@@ -193,12 +212,63 @@ function weeklyVolume(weekStartISO) {
     Object.entries(s.entries || {}).forEach(([exId, e]) => {
       const ex = EXERCISE_INDEX[exId]; if (!ex) return;
       const sets = entryReps(e).length, vol = entryVolume(e);
-      (ex.mainTokens || []).forEach((t) => add(TOKEN_GROUP[t] || "Otros", sets, vol));
-      (ex.secTokens || []).forEach((t) => add(TOKEN_GROUP[t] || "Otros", sets * 0.5, vol * 0.5));
+      const est = ex.estimulo && Object.keys(ex.estimulo).length ? ex.estimulo : null;
+      if (est) {
+        Object.entries(est).forEach(([t, w]) => add(TOKEN_GROUP[t] || "Otros", sets * w, vol * w));
+      } else {
+        (ex.mainTokens || []).forEach((t) => add(TOKEN_GROUP[t] || "Otros", sets, vol));
+        (ex.secTokens || []).forEach((t) => add(TOKEN_GROUP[t] || "Otros", sets * 0.5, vol * 0.5));
+      }
     });
   });
-  Object.values(acc).forEach((g) => { g.sets = Math.round(g.sets * 2) / 2; g.vol = Math.round(g.vol); });
+  // incluir grupos con objetivo aunque no se hayan entrenado
+  Object.keys(GROUP_TARGET).forEach((g) => { if (!acc[g]) acc[g] = { group: g, sets: 0, vol: 0 }; });
+  Object.values(acc).forEach((g) => { g.sets = Math.round(g.sets * 2) / 2; g.vol = Math.round(g.vol); g.target = GROUP_TARGET[g.group] || 0; });
   return { start, end, groups: Object.values(acc).sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group)) };
+}
+
+// total de series efectivas (ponderadas) de una semana
+function weekTotalSets(weekStartISO) {
+  return weeklyVolume(weekStartISO).groups.reduce((a, g) => a + g.sets, 0);
+}
+
+// --- 1RM estimado (Epley) ---
+function epley(weight, reps) { return (weight != null && reps > 0) ? weight * (1 + reps / 30) : 0; }
+function bestE1RM(exId) {
+  let best = 0;
+  state.sessions.forEach((s) => {
+    const e = s.entries && s.entries[exId]; if (!e) return;
+    const w = workWeight(e); if (w == null) return;
+    entryReps(e).forEach((r) => { const v = epley(w, r); if (v > best) best = v; });
+  });
+  return best;
+}
+
+// --- favoritos (preferencia local) ---
+function loadFavorites() { try { return JSON.parse(localStorage.getItem("carga_favs") || "{}") || {}; } catch (_) { return {}; } }
+function saveFavorites() { try { localStorage.setItem("carga_favs", JSON.stringify(state.favorites)); } catch (_) {} }
+function isFav(exId) { return !!state.favorites[exId]; }
+
+// --- racha de semanas con al menos una sesión ---
+function weekStreak() {
+  if (!state.sessions.length) return 0;
+  const weeks = new Set(state.sessions.map((s) => weekRange(s.date).start));
+  let streak = 0;
+  let cur = weekRange(todayISO()).start;
+  // si no hay nada esta semana, empezamos a contar desde la semana pasada
+  if (!weeks.has(cur)) cur = addDaysISO(cur, -7);
+  while (weeks.has(cur)) { streak++; cur = addDaysISO(cur, -7); }
+  return streak;
+}
+
+// --- ejercicios listos para subir peso (doble progresión cumplida) ---
+function readyToProgress() {
+  const out = [];
+  DAYS.forEach((d) => d.exercises.forEach((base) => {
+    const ex = resolveExercise(base);
+    if (suggestion(ex).kind === "up") out.push({ id: base.id, name: ex.name, day: d.name });
+  }));
+  return out;
 }
 
 // --- récords personales por ejercicio ---
@@ -347,6 +417,7 @@ function render() {
   const r = parseHash();
   switch (r.name) {
     case "session": return renderSession(r.a);
+    case "plan": return renderDayPreview(r.a);
     case "history": return renderHistory(r.a);
     case "day": return renderDayDetail(r.a);
     case "log": return renderLogDetail(r.a);
@@ -429,21 +500,35 @@ function dayLastLabel(dayId) {
 
 function renderDays() {
   const wk = weekRange(todayISO());
+  const streak = weekStreak();
+  const ready = readyToProgress();
+  const panel = `
+    <div class="homepanel">
+      <div class="hp-stat">
+        <div class="hp-big">${streak}</div>
+        <div class="hp-lbl">${streak === 1 ? "semana" : "semanas"} de racha</div>
+      </div>
+      <button class="hp-stat ${ready.length ? "go" : ""}" ${ready.length ? `data-go="#/progress/pr"` : ""}>
+        <div class="hp-big">${ready.length}</div>
+        <div class="hp-lbl">${ready.length === 1 ? "ejercicio listo" : "listos"} para subir peso</div>
+      </button>
+    </div>`;
   const cards = DAYS.map((d, i) => {
     const last = dayLastLabel(d.id);
     const done = state.sessions.some((s) => s.dayId === d.id && s.date >= wk.start && s.date <= wk.end);
     return `
-      <button class="daycard ${done ? "done" : ""}" data-group="${d.group}" data-go="#/session/${d.id}">
+      <button class="daycard ${done ? "done" : ""}" data-group="${d.group}" data-go="#/plan/${d.id}">
         ${done ? `<span class="wkdone">✓ Hecho</span>` : `<span class="didx">${i + 1}</span>`}
         <span class="grp">${d.group === "torso" ? "Torso" : "Pierna"}</span>
         <div class="dname">${esc(d.name)}</div>
-        <div class="dmeta">${d.exercises.length} ejercicios</div>
+        <div class="dmeta">${d.exercises.length} ejercicios${d.durMin ? ` · ~${d.durMin} min` : ""}</div>
         <div class="last ${last ? "" : "none"}">${last ? "● " + last : "○ sin registros"}</div>
       </button>`;
   }).join("");
   shell(`
     <div class="screen">
       ${topbar("Elige tu día", "Hoy entrenas")}
+      ${panel}
       <p class="weeknote">Semana del ${fmtDate(wk.start)} al ${fmtDate(wk.end)} · marcados los que ya hiciste</p>
       <div class="daylist">${cards}</div>
       <div class="divider"><span class="label">Recuerda</span><span class="rule"></span></div>
@@ -451,6 +536,40 @@ function renderDays() {
     </div>`, "days");
   bindCommon();
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+}
+
+// ---------- vista previa del día (antes de empezar) ----------
+function renderDayPreview(dayId) {
+  const day = DAYS.find((d) => d.id === dayId);
+  if (!day) return go("#/days");
+  const rows = day.exercises.map((base) => {
+    const ex = resolveExercise(base);
+    const last = lastEntryFor(base.id);
+    const lastTxt = last ? formatSets(ex, last.entry) : "sin registros";
+    return `
+      <div class="pp-row">
+        <div class="pp-main">
+          <div class="pp-name">${isFav(base.id) ? "★ " : ""}${esc(ex.name)}${ex.isVariant ? ` <span class="vbadge">variante</span>` : ""}</div>
+          <div class="pp-sub">${esc(ex.scheme)} · ${esc(ex.mainMuscle)}</div>
+          <div class="pp-last">${last ? "● " : "○ "}${esc(lastTxt)}</div>
+        </div>
+        ${base.variant ? `<button class="chip swap" data-swap="${base.id}">${I.swap}</button>` : ""}
+      </div>`;
+  }).join("");
+  shell(`
+    <div class="screen">
+      <button class="linkbtn" data-go="#/days">← Días</button>
+      ${topbar(day.name, "Vista previa")}
+      <div class="pp-meta">${day.exercises.length} ejercicios${day.durMin ? ` · ~${day.durMin} min estimados` : ""}</div>
+      <div class="pplist">${rows}</div>
+      <div class="save-row"><button class="btn btn-primary" id="startday">Empezar sesión</button></div>
+    </div>`, "days");
+  bindCommon();
+  document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+  document.querySelectorAll("[data-swap]").forEach((b) => b.onclick = () => {
+    const id = b.dataset.swap; state.variants[id] = !state.variants[id]; saveVariants(); render();
+  });
+  $("#startday").onclick = () => go("#/session/" + day.id);
 }
 
 // ---------- sesión: un ejercicio por pantalla ----------
@@ -584,11 +703,22 @@ function renderStep(day) {
 
         <div class="ex-meta">${I.clock} Descanso ${esc(ex.descanso || "—")} · Tempo ${esc(ex.tempo || "—")}</div>
 
+        <div class="tagrow">
+          ${ex.tipo ? `<span class="tag">${esc(cap(ex.tipo))}</span>` : ""}
+          ${ex.prioridad ? `<span class="tag">${esc(cap(ex.prioridad))}</span>` : ""}
+          ${ex.fatiga ? `<span class="tag fat-${esc(ex.fatiga)}">Fatiga ${esc(ex.fatiga)}</span>` : ""}
+          ${ex.tipoCarga === "axial" ? `<span class="tag">Carga axial</span>` : ""}
+          ${(ex.etiquetas || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+          <button class="fav ${isFav(base.id) ? "on" : ""}" data-fav="${base.id}" aria-label="Favorito">${isFav(base.id) ? "★" : "☆"}</button>
+        </div>
+
         ${muscles}
 
         ${base.variant ? `<div class="swap-note">${ex.isVariant
             ? `↳ Variante de <b>${esc(base.name)}</b>`
             : `Alternativa: <b>${esc(base.variant.name)}</b>`}</div>` : ""}
+
+        ${ex.calienta ? `<div class="warmup">${I.clock} ${esc(ex.calientaTxt || "Haz 1-2 series de aproximación antes de las efectivas.")}</div>` : ""}
 
         <div class="ex-tools">
           <a class="chip" href="${ex.video || videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
@@ -598,7 +728,7 @@ function renderStep(day) {
           ${base.variant ? `<button class="chip swap" data-swap="${base.id}">${I.swap} ${ex.isVariant ? "Usar original" : "Cambiar ejercicio"}</button>` : ""}
         </div>
 
-        <div class="ejec collapse" data-ejecbox="${ex.id}">${esc(ex.ejecucion)}</div>
+        <div class="ejec collapse" data-ejecbox="${ex.id}">${howToHtml(ex)}</div>
         <div class="ejec err collapse" data-errbox="${ex.id}">${esc(ex.error || "Sin indicaciones.")}</div>
 
         <div class="suggest ${sug.kind === "up" ? "up" : sug.kind === "cap" ? "cap" : ""}">
@@ -639,6 +769,10 @@ function renderStep(day) {
   document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; render(); window.scrollTo(0, 0); });
   document.querySelectorAll("[data-ejec]").forEach((b) => b.onclick = () => $(`[data-ejecbox="${b.dataset.ejec}"]`).classList.toggle("open"));
   document.querySelectorAll("[data-err]").forEach((b) => b.onclick = () => $(`[data-errbox="${b.dataset.err}"]`).classList.toggle("open"));
+  document.querySelectorAll("[data-fav]").forEach((b) => b.onclick = () => {
+    const id = b.dataset.fav; state.favorites[id] = !state.favorites[id]; if (!state.favorites[id]) delete state.favorites[id];
+    saveFavorites(); render();
+  });
   document.querySelectorAll("[data-swap]").forEach((b) => b.onclick = () => {
     captureStep(day);
     const id = b.dataset.swap;
@@ -676,6 +810,13 @@ function renderSessionSummary(day) {
   }).join("");
 
   const editing = !!(draft && draft.editingId);
+  if (!draft.check) draft.check = { energia: null, sueno: null };
+  const scale = (key, label) => `
+    <div class="checkrow">
+      <span class="check-lbl">${label}</span>
+      <div class="check-dots">${[1,2,3,4,5].map((n) =>
+        `<button class="ckdot ${draft.check[key] === n ? "on" : ""}" data-check="${key}" data-val="${n}">${n}</button>`).join("")}</div>
+    </div>`;
   shell(`
     <div class="screen">
       <div class="step-head">
@@ -686,6 +827,11 @@ function renderSessionSummary(day) {
       ${topbar(editing ? "Editar sesión" : "Sesión completa", editing ? "Corrige y actualiza" : "Revisa y guarda")}
       <label class="date" style="margin-bottom:14px">${I.clock}<input type="date" id="sdate" value="${draft.date}"></label>
       <div class="sumlist">${rows}</div>
+      <div class="checkcard">
+        <div class="check-h">¿Cómo te has encontrado? <span>opcional</span></div>
+        ${scale("energia", "Energía")}
+        ${scale("sueno", "Sueño")}
+      </div>
       <div class="save-row">
         <button class="btn btn-primary" id="save">${editing ? "Actualizar sesión" : "Guardar sesión"}</button>
         <p class="save-hint">Toca un ejercicio para editarlo. Lo que dejes sin registrar no se guarda.</p>
@@ -695,6 +841,11 @@ function renderSessionSummary(day) {
   bindCommon();
   $("#backlast").onclick = () => { draft.idx = day.exercises.length - 1; render(); window.scrollTo(0, 0); };
   document.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => { draft.idx = +b.dataset.edit; render(); window.scrollTo(0, 0); });
+  document.querySelectorAll("[data-check]").forEach((b) => b.onclick = () => {
+    const key = b.dataset.check, val = +b.dataset.val;
+    draft.check[key] = draft.check[key] === val ? null : val;
+    document.querySelectorAll(`[data-check="${key}"]`).forEach((x) => x.classList.toggle("on", +x.dataset.val === draft.check[key]));
+  });
   $("#sdate").onchange = (e) => { draft.date = e.target.value || todayISO(); };
   $("#save").onclick = () => saveSession(day);
   startSessionClock();
@@ -726,18 +877,19 @@ async function saveSession(day) {
   const durationSec = editingId
     ? (draft.baseDuration ?? null)
     : (draft && draft.startedAt ? Math.round((Date.now() - draft.startedAt) / 1000) : null);
+  const check = (draft.check && (draft.check.energia || draft.check.sueno)) ? draft.check : null;
   btn.disabled = true; btn.textContent = "Guardando…";
   try {
     if (editingId) {
       await updateDoc(doc(db, "users", state.user.uid, "sessions", editingId),
-        { dayId: day.id, dayName: day.name, date, entries, durationSec });
+        { dayId: day.id, dayName: day.name, date, entries, durationSec, check });
       const idx = state.sessions.findIndex((s) => s.id === editingId);
-      if (idx >= 0) state.sessions[idx] = { id: editingId, dayId: day.id, dayName: day.name, date, entries, durationSec };
+      if (idx >= 0) state.sessions[idx] = { id: editingId, dayId: day.id, dayName: day.name, date, entries, durationSec, check };
     } else {
       const ref = await addDoc(collection(db, "users", state.user.uid, "sessions"), {
-        dayId: day.id, dayName: day.name, date, entries, durationSec, createdAt: serverTimestamp(),
+        dayId: day.id, dayName: day.name, date, entries, durationSec, check, createdAt: serverTimestamp(),
       });
-      state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries, durationSec });
+      state.sessions.unshift({ id: ref.id, dayId: day.id, dayName: day.name, date, entries, durationSec, check });
     }
     state.sessions.sort((a, b) => (a.date < b.date ? 1 : -1));
     stopSessionClock();
@@ -836,6 +988,7 @@ function renderDayDetail(date) {
     return `<div class="day-block">
       <div class="day-block-h">${esc(s.dayName)}${s.durationSec ? ` <span class="dur">${I.clock} ${fmtDur(s.durationSec * 1000)}</span>` : ""}</div>
       ${rows}
+      ${s.check && (s.check.energia || s.check.sueno) ? `<div class="check-line">${s.check.energia ? `Energía ${s.check.energia}/5` : ""}${s.check.energia && s.check.sueno ? " · " : ""}${s.check.sueno ? `Sueño ${s.check.sueno}/5` : ""}</div>` : ""}
       <div class="block-actions">
         <button class="chip" data-editses="${s.id}">${I.swap} Editar</button>
         <button class="chip danger" data-delses="${s.id}">Borrar</button>
@@ -863,6 +1016,7 @@ function editSession(id) {
   draft = {
     dayId: s.dayId, date: s.date, idx: 0, pendingCue: false, startedAt: Date.now(),
     editingId: s.id, baseDuration: s.durationSec || null,
+    check: s.check ? { ...s.check } : { energia: null, sueno: null },
     entries: JSON.parse(JSON.stringify(s.entries || {})),
   };
   go("#/session/" + s.dayId);
@@ -977,6 +1131,8 @@ function renderProgExercise(exId) {
   const data = seriesFor(current);
   const withData = data.pts;
   const best = bestFor(current);
+  const e1 = bestE1RM(current);
+  const e1show = data.time ? null : (e1 ? Math.round(e1 * 10) / 10 : (ex.rmInicial ? Math.round(ex.rmInicial * 10) / 10 : null));
 
   const options = DAYS.map((d) =>
     `<optgroup label="${esc(d.name)}">` +
@@ -986,6 +1142,8 @@ function renderProgExercise(exId) {
   const stat3 = data.time
     ? `<div class="stat"><div class="k">Mejor aguante</div><div class="v">${best.repsMax || "—"}<small> s</small></div></div>`
     : `<div class="stat"><div class="k">Mejor volumen</div><div class="v">${best.volume || "—"}<small> kg·rep</small></div></div>`;
+  const stat4 = data.time ? "" :
+    `<div class="stat"><div class="k">1RM est.</div><div class="v">${e1show != null ? e1show : "—"}<small> kg</small></div></div>`;
 
   shell(`
     <div class="screen">
@@ -997,7 +1155,9 @@ function renderProgExercise(exId) {
         <div class="stat"><div class="k">Sesiones</div><div class="v">${withData.length}</div></div>
         <div class="stat"><div class="k">${data.time ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${(data.time ? best.repsMax : best.weight) || "—"}<small> ${data.time ? "s" : "kg"}</small></div></div>
         ${stat3}
+        ${stat4}
       </div>
+      ${e1show != null && !data.time ? `<p class="e1note">1RM estimado con la fórmula de Epley a partir de tus series${e1 ? "" : " (estimación inicial del plan)"}.</p>` : ""}
       <div class="divider"><span class="label">Objetivo</span><span class="rule"></span></div>
       <p class="sub">${esc(ex.scheme)} · RIR ${esc(ex.rir)}. ${esc(suggestion(ex).text)}</p>
     </div>`, "progress");
@@ -1009,17 +1169,30 @@ function renderProgVolume() {
   const ref = state.volWeek || todayISO();
   const { start, end, groups } = weeklyVolume(ref);
   const totalSets = groups.reduce((a, g) => a + g.sets, 0);
-  const totalVol = groups.reduce((a, g) => a + g.vol, 0);
-  const maxSets = groups.reduce((m, g) => Math.max(m, g.sets), 0) || 1;
+  const totalTarget = groups.reduce((a, g) => a + (g.target || 0), 0);
   const thisMon = weekRange(todayISO()).start;
   const atCurrent = start >= thisMon;
 
-  const rows = groups.length ? groups.map((g) => `
+  const rows = groups.map((g) => {
+    const pct = g.target ? Math.min(100, Math.round(g.sets / g.target * 100)) : (g.sets ? 100 : 0);
+    const state2 = g.target && g.sets >= g.target ? "hit" : (g.target && g.sets >= g.target * 0.6 ? "near" : "");
+    return `
     <div class="volrow">
-      <div class="vol-h"><span class="vol-name">${g.group}</span><span class="vol-sets">${fmtSets(g.sets)} series</span></div>
-      <div class="volbar"><div class="volbar-fill" style="width:${Math.round(g.sets / maxSets * 100)}%"></div></div>
+      <div class="vol-h"><span class="vol-name">${g.group}</span><span class="vol-sets">${fmtSets(g.sets)}${g.target ? ` / ${fmtSets(g.target)}` : ""} series</span></div>
+      <div class="volbar"><div class="volbar-fill ${state2}" style="width:${pct}%"></div></div>
       <div class="vol-sub">${g.vol ? g.vol + " kg·rep" : "—"}</div>
-    </div>`).join("") : `<div class="empty"><p>Sin entrenos esta semana.</p></div>`;
+    </div>`;
+  }).join("");
+
+  // tendencia: total de series de las últimas 8 semanas
+  const weeks = [];
+  for (let i = 7; i >= 0; i--) weeks.push(weekRange(addDaysISO(thisMon, -7 * i)).start);
+  const totals = weeks.map((w) => weekTotalSets(w));
+  const tmax = Math.max(1, ...totals);
+  const trend = `<div class="trend">${totals.map((v, i) => {
+    const isCur = weeks[i] === start;
+    return `<div class="trend-bar ${isCur ? "now" : ""}" style="height:${Math.max(4, Math.round(v / tmax * 56))}px" title="${fmtSets(v)} series"></div>`;
+  }).join("")}</div>`;
 
   shell(`
     <div class="screen">
@@ -1030,9 +1203,11 @@ function renderProgVolume() {
         <div class="wklabel">${fmtDate(start)} – ${fmtDate(end)}</div>
         <button class="navbtn ${atCurrent ? "off" : ""}" id="wknext" ${atCurrent ? "disabled" : ""}>›</button>
       </div>
-      <div class="voltot"><span><b>${fmtSets(totalSets)}</b> series</span><span><b>${totalVol}</b> kg·rep</span></div>
+      <div class="voltot"><span><b>${fmtSets(totalSets)}</b>${totalTarget ? ` / ${fmtSets(totalTarget)}` : ""} series</span><span>objetivo del plan</span></div>
       <div class="vollist">${rows}</div>
-      <p class="save-hint" style="margin-top:14px">Series efectivas por grupo: el músculo principal suma 1 serie y cada músculo secundario ½ serie. Para hipertrofia, ~10-20 series semanales por grupo suele ir bien.</p>
+      <div class="divider"><span class="label">Tendencia · 8 semanas</span><span class="rule"></span></div>
+      ${trend}
+      <p class="save-hint" style="margin-top:14px">Barra llena = objetivo semanal del plan por grupo (principal 1 serie, secundario ½). ~10-20 series por grupo suele ir bien para hipertrofia.</p>
     </div>`, "progress");
   bindCommon();
   $("#wkprev").onclick = () => { state.volWeek = addDaysISO(start, -7); render(); };
@@ -1068,7 +1243,34 @@ function renderProgRecords() {
 
 function renderProgPhotos() {
   if (!state.progLoaded) loadProgress().then(() => { if (parseHash().name === "progress") render(); });
-  const grid = state.photos.length ? state.photos.map((p) => `
+  const photos = state.photos;
+
+  // modo comparar (antes/después)
+  if (state.cmpMode && photos.length >= 2) {
+    const aId = state.cmpA || photos[photos.length - 1].id;  // más antigua
+    const bId = state.cmpB || photos[0].id;                  // más reciente
+    const A = photos.find((p) => p.id === aId) || photos[photos.length - 1];
+    const B = photos.find((p) => p.id === bId) || photos[0];
+    const opts = (sel) => photos.map((p) => `<option value="${p.id}" ${p.id === sel ? "selected" : ""}>${fmtDate(p.date)}</option>`).join("");
+    shell(`
+      <div class="screen">
+        ${topbar("Progreso", "Tu evolución")}
+        ${progSeg("fotos")}
+        <button class="linkbtn" id="cmpback">← Ver galería</button>
+        <div class="cmpwrap">
+          <figure class="cmp-item"><img src="${A.img}" alt=""><figcaption><select id="cmpa">${opts(A.id)}</select></figcaption></figure>
+          <figure class="cmp-item"><img src="${B.img}" alt=""><figcaption><select id="cmpb">${opts(B.id)}</select></figcaption></figure>
+        </div>
+        <p class="save-hint" style="margin-top:14px">Elige dos fechas para comparar tu evolución lado a lado.</p>
+      </div>`, "progress");
+    bindCommon();
+    $("#cmpback").onclick = () => { state.cmpMode = false; render(); };
+    $("#cmpa").onchange = (e) => { state.cmpA = e.target.value; render(); };
+    $("#cmpb").onchange = (e) => { state.cmpB = e.target.value; render(); };
+    return;
+  }
+
+  const grid = photos.length ? photos.map((p) => `
     <figure class="photo-item">
       <img src="${p.img}" alt="${esc(p.date)}">
       <figcaption>${fmtDate(p.date)}</figcaption>
@@ -1079,14 +1281,15 @@ function renderProgPhotos() {
     <div class="screen">
       ${topbar("Progreso", "Tu evolución")}
       ${progSeg("fotos")}
-      <label class="addphoto" id="addlbl">
-        ${I.image}<span>Añadir foto</span>
-        <input type="file" accept="image/*" id="photoin" hidden>
-      </label>
+      <div class="photo-actions">
+        <label class="addphoto" id="addlbl">${I.image}<span>Añadir foto</span><input type="file" accept="image/*" id="photoin" hidden></label>
+        ${photos.length >= 2 ? `<button class="btn btn-ghost" id="cmpbtn">Comparar</button>` : ""}
+      </div>
       <div class="photogrid">${state.progLoaded ? grid : `<div class="empty"><p>Cargando…</p></div>`}</div>
       <p class="save-hint" style="margin-top:14px">Las fotos se guardan en tu cuenta (comprimidas). Una cada 2-4 semanas con la misma luz y pose ayuda a ver cambios.</p>
     </div>`, "progress");
   bindCommon();
+  const cmp = $("#cmpbtn"); if (cmp) cmp.onclick = () => { state.cmpMode = true; render(); };
   const input = $("#photoin");
   if (input) input.onchange = async (e) => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
@@ -1138,6 +1341,7 @@ function renderPrinciples() {
       <div class="exprow">
         <button class="btn btn-ghost" id="expcsv">CSV</button>
         <button class="btn btn-ghost" id="expjson">Backup JSON</button>
+        <label class="btn btn-ghost" id="impbtn">Importar<input type="file" accept="application/json,.json" id="impin" hidden></label>
       </div>
 
       <p class="save-hint" style="margin-top:18px">Los vídeos abren una búsqueda en YouTube con buenas demostraciones de cada ejercicio.</p>
@@ -1169,6 +1373,40 @@ function renderPrinciples() {
   // exportar
   $("#expcsv").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportCSV(); };
   $("#expjson").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportJSON(); };
+
+  // importar backup
+  const imp = $("#impin");
+  if (imp) imp.onchange = (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      let data;
+      try { data = JSON.parse(reader.result); } catch (_) { return toast("Archivo no válido", true); }
+      const sess = Array.isArray(data.sessions) ? data.sessions : null;
+      if (!sess) return toast("El backup no tiene sesiones", true);
+      if (!confirm(`¿Importar ${sess.length} sesiones? Se añadirán a las actuales.`)) return;
+      await importBackup(data);
+    };
+    reader.readAsText(file);
+  };
+}
+
+async function importBackup(data) {
+  const sess = (data.sessions || []).filter((s) => s && s.entries);
+  let ok = 0;
+  try {
+    for (const s of sess) {
+      const payload = { dayId: s.dayId, dayName: s.dayName, date: s.date, entries: s.entries,
+        durationSec: s.durationSec ?? null, check: s.check ?? null, createdAt: serverTimestamp() };
+      const ref = await addDoc(collection(db, "users", state.user.uid, "sessions"), payload);
+      state.sessions.push({ id: ref.id, ...payload });
+      ok++;
+    }
+    if (data.variants && typeof data.variants === "object") { state.variants = { ...state.variants, ...data.variants }; saveVariants(); }
+    state.sessions.sort((a, b) => (a.date < b.date ? 1 : -1));
+    toast(`Importadas ${ok} sesiones`);
+    go("#/history");
+  } catch (e) { console.error(e); toast(`Importadas ${ok}; fallo en el resto`, true); }
 }
 
 // ---------- temporizador ----------
