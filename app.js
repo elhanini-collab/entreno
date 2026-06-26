@@ -71,6 +71,7 @@ function weekRange(refISO) {
   return { start: isoOf(start), end: isoOf(end) };
 }
 const num = (v) => (v === "" || v == null || isNaN(+v)) ? null : +v;
+const fmtSets = (n) => Number.isInteger(n) ? String(n) : (Math.round(n * 2) / 2).toFixed(1);
 const fmtDur = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
@@ -144,7 +145,9 @@ function lastEntryFor(exId) {
 
 function suggestion(ex) {
   const last = lastEntryFor(ex.id);
-  if (!last) return { kind: "new", text: "Primer registro. Empieza en el extremo bajo del rango con buena técnica." };
+  if (!last) return { kind: "new", text: ex && ex.pesoInicial
+    ? `Primer registro. Empieza con unos ${ex.pesoInicial} kg en el extremo bajo del rango con buena técnica.`
+    : "Primer registro. Empieza en el extremo bajo del rango con buena técnica." };
   const reps = entryReps(last.entry);
   const weight = workWeight(last.entry);
   if (!reps.length) return { kind: "hold", text: `Última vez con ${weight ?? "?"} kg. Anota tus reps por serie para ver la progresión.` };
@@ -169,40 +172,32 @@ function suggestion(ex) {
 }
 
 // ========== helpers de funciones nuevas ==========
-// --- grupos musculares (a partir del músculo principal) ---
-function normTxt(s) { return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
-function muscleGroup(mainMuscle) {
-  const t = normTxt(mainMuscle);
-  if (/pectoral/.test(t)) return "Pecho";
-  if (/dorsal|espalda|romboide|trapecio|redondo|lumbar/.test(t)) return "Espalda";
-  if (/deltoid|hombro|manguito/.test(t)) return "Hombros";
-  if (/triceps/.test(t)) return "Tríceps";
-  if (/biceps|braquial|braquiorradial|antebrazo/.test(t)) return "Bíceps";
-  if (/cuadriceps/.test(t)) return "Cuádriceps";
-  if (/isquio|femoral/.test(t)) return "Femoral";
-  if (/gluteo/.test(t)) return "Glúteo";
-  if (/gemelo|gastrocnemio|soleo|pantorrilla/.test(t)) return "Gemelos";
-  if (/core|abdomin|oblicuo|transverso/.test(t)) return "Core";
-  return "Otros";
-}
-const GROUP_ORDER = ["Pecho","Espalda","Hombros","Bíceps","Tríceps","Cuádriceps","Femoral","Glúteo","Gemelos","Core","Otros"];
+// --- grupos musculares por token canónico (del plan) ---
+const TOKEN_GROUP = {
+  chest: "Pecho",
+  lats: "Espalda", "middle back": "Espalda", "lower back": "Espalda",
+  shoulders: "Hombros",
+  biceps: "Bíceps", forearms: "Antebrazo", triceps: "Tríceps",
+  quadriceps: "Cuádriceps", hamstrings: "Femoral", glutes: "Glúteo", calves: "Gemelos",
+  abdominals: "Core", "hip flexors": "Core",
+};
+const GROUP_ORDER = ["Pecho","Espalda","Hombros","Bíceps","Tríceps","Antebrazo","Cuádriceps","Femoral","Glúteo","Gemelos","Core","Otros"];
 
-// --- volumen semanal por músculo ---
+// --- volumen semanal por músculo (principal = 1 serie, secundarios = ½ serie) ---
 function weeklyVolume(weekStartISO) {
   const { start, end } = weekRange(weekStartISO);
   const acc = {};
+  const add = (g, sets, vol) => { if (!acc[g]) acc[g] = { group: g, sets: 0, vol: 0 }; acc[g].sets += sets; acc[g].vol += vol; };
   state.sessions.forEach((s) => {
     if (s.date < start || s.date > end) return;
     Object.entries(s.entries || {}).forEach(([exId, e]) => {
       const ex = EXERCISE_INDEX[exId]; if (!ex) return;
-      const g = muscleGroup(ex.mainMuscle);
-      const reps = entryReps(e);
-      const sets = reps.length;
-      if (!acc[g]) acc[g] = { group: g, sets: 0, vol: 0 };
-      acc[g].sets += sets;
-      acc[g].vol += entryVolume(e);
+      const sets = entryReps(e).length, vol = entryVolume(e);
+      (ex.mainTokens || []).forEach((t) => add(TOKEN_GROUP[t] || "Otros", sets, vol));
+      (ex.secTokens || []).forEach((t) => add(TOKEN_GROUP[t] || "Otros", sets * 0.5, vol * 0.5));
     });
   });
+  Object.values(acc).forEach((g) => { g.sets = Math.round(g.sets * 2) / 2; g.vol = Math.round(g.vol); });
   return { start, end, groups: Object.values(acc).sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group)) };
 }
 
@@ -221,8 +216,9 @@ function bestFor(exId, excludeId) {
   return { weight, volume, repsMax, dW, dV, dR };
 }
 
-// --- descanso prescrito → segundos (extremo bajo del rango) ---
+// --- descanso prescrito → segundos (usa el valor numérico del plan) ---
 function restSeconds(ex) {
+  if (ex && ex.restMin) return ex.restMin;
   const d = (ex && ex.descanso) || "";
   const mn = d.match(/(\d+)\s*(?:[-–]\s*\d+)?\s*min/i);
   if (mn) return parseInt(mn[1], 10) * 60;
@@ -549,8 +545,8 @@ function renderStep(day) {
       <div class="unit"><input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(pesoVal)}" placeholder="—"><span class="suf">kg</span></div>
     </div>`;
 
-  // foto/demostración: si es variante no usamos los medios del original (aún sin imágenes propias)
-  const demoImgs = ex.isVariant ? [] : exerciseImages(ex.id);
+  // foto/demostración: imagen del ejercicio o de su variante (Free Exercise DB / GIF)
+  const demoImgs = exerciseImages(ex.id, ex.isVariant);
   let photoHtml;
   if (demoImgs.length) {
     const frames = demoImgs.map((src, k) =>
@@ -559,7 +555,7 @@ function renderStep(day) {
     photoHtml = `<div class="photo demo">
           <div class="photo-ph">${I.image}<span>Demostración no disponible</span></div>
           ${frames}
-          <span class="photo-src">${esc(exerciseSource(ex.id))}</span>
+          <span class="photo-src">${esc(exerciseSource(ex.id, ex.isVariant))}</span>
         </div>`;
   } else {
     const localSrc = ex.isVariant ? `img/${ex.id}_v.jpg` : `img/${ex.id}.jpg`;
@@ -595,7 +591,7 @@ function renderStep(day) {
             : `Alternativa: <b>${esc(base.variant.name)}</b>`}</div>` : ""}
 
         <div class="ex-tools">
-          <a class="chip" href="${videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
+          <a class="chip" href="${ex.video || videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
           <button class="chip" data-ejec="${ex.id}">Cómo se hace</button>
           <button class="chip" data-err="${ex.id}">Errores a evitar</button>
           ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
@@ -1020,7 +1016,7 @@ function renderProgVolume() {
 
   const rows = groups.length ? groups.map((g) => `
     <div class="volrow">
-      <div class="vol-h"><span class="vol-name">${g.group}</span><span class="vol-sets">${g.sets} series</span></div>
+      <div class="vol-h"><span class="vol-name">${g.group}</span><span class="vol-sets">${fmtSets(g.sets)} series</span></div>
       <div class="volbar"><div class="volbar-fill" style="width:${Math.round(g.sets / maxSets * 100)}%"></div></div>
       <div class="vol-sub">${g.vol ? g.vol + " kg·rep" : "—"}</div>
     </div>`).join("") : `<div class="empty"><p>Sin entrenos esta semana.</p></div>`;
@@ -1034,9 +1030,9 @@ function renderProgVolume() {
         <div class="wklabel">${fmtDate(start)} – ${fmtDate(end)}</div>
         <button class="navbtn ${atCurrent ? "off" : ""}" id="wknext" ${atCurrent ? "disabled" : ""}>›</button>
       </div>
-      <div class="voltot"><span><b>${totalSets}</b> series</span><span><b>${totalVol}</b> kg·rep</span></div>
+      <div class="voltot"><span><b>${fmtSets(totalSets)}</b> series</span><span><b>${totalVol}</b> kg·rep</span></div>
       <div class="vollist">${rows}</div>
-      <p class="save-hint" style="margin-top:14px">Series efectivas por grupo muscular (músculo principal). Para hipertrofia, ~10-20 series semanales por grupo suele ir bien.</p>
+      <p class="save-hint" style="margin-top:14px">Series efectivas por grupo: el músculo principal suma 1 serie y cada músculo secundario ½ serie. Para hipertrofia, ~10-20 series semanales por grupo suele ir bien.</p>
     </div>`, "progress");
   bindCommon();
   $("#wkprev").onclick = () => { state.volWeek = addDaysISO(start, -7); render(); };
