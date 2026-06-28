@@ -826,3 +826,8 @@ a { color: inherit; }
 /* ====== Fecha de récords ====== */
 .rec-date { display: block; font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); margin-top: 3px; }
 .rec-when { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+/* ====== Chip de fecha (genérico, fuera de .shead) ====== */
+.date { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; font-family: var(--mono); font-size: 13px; color: var(--ink); }
+.date svg { width: 16px; height: 16px; flex: none; opacity: .85; }
+.date input { background: none; border: none; color: var(--ink); font-family: var(--mono); font-size: 13px; padding: 0; outline: none; }
