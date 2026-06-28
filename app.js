@@ -1417,19 +1417,33 @@ function renderProgPhotos() {
 // ---------- Medidas corporales ----------
 function measLineChart(series, unit) {
   if (!series.length) return `<div class="empty"><p>Aún no hay datos de esta medida.</p></div>`;
-  const W = 320, H = 160, padX = 16, padY = 22;
+  const W = 320, H = 178, padX = 16, padTop = 22, padBottom = 30;
   const vals = series.map((p) => p.value);
   let min = Math.min(...vals), max = Math.max(...vals);
   if (min === max) { min -= 1; max += 1; }
   const x = (i) => padX + (series.length === 1 ? (W - 2 * padX) / 2 : (i / (series.length - 1)) * (W - 2 * padX));
-  const y = (v) => H - padY - ((v - min) / (max - min)) * (H - 2 * padY);
+  const y = (v) => H - padBottom - ((v - min) / (max - min)) * (H - padTop - padBottom);
   const path = series.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
   const dots = series.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="3.5" fill="var(--accent)"/>`).join("");
   const labels = series.map((p, i) =>
     `<text x="${x(i).toFixed(1)}" y="${(y(p.value) - 8).toFixed(1)}" font-size="9" fill="var(--ink)" text-anchor="middle" font-family="Space Mono, monospace">${p.value}</text>`).join("");
-  const grid = [0, 0.5, 1].map((t) => { const yy = padY + t * (H - 2 * padY); return `<line x1="${padX}" y1="${yy}" x2="${W - padX}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`; }).join("");
+  const grid = [0, 0.5, 1].map((t) => { const yy = padTop + t * (H - padTop - padBottom); return `<line x1="${padX}" y1="${yy}" x2="${W - padX}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`; }).join("");
+  // eje X: una etiqueta por mes (primer punto de cada mes), con año solo cuando cambia
+  let lastKey = "", lastYear = null;
+  const baseY = H - padBottom;
+  const xaxis = series.map((p, i) => {
+    const [yy, mm] = p.date.split("-").map(Number);
+    const key = yy + "-" + mm;
+    if (key === lastKey) return "";
+    lastKey = key;
+    const txt = MES[mm - 1] + (lastYear !== null && yy !== lastYear ? " " + String(yy).slice(2) : "");
+    lastYear = yy;
+    const anchor = i === 0 ? "start" : (i === series.length - 1 ? "end" : "middle");
+    const tick = `<line x1="${x(i).toFixed(1)}" y1="${padTop}" x2="${x(i).toFixed(1)}" y2="${baseY}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    return tick + `<text x="${x(i).toFixed(1)}" y="${H - 10}" font-size="9" fill="var(--muted)" text-anchor="${anchor}" font-family="Space Mono, monospace">${txt}</text>`;
+  }).join("");
   return `<div class="chartcard"><div class="chart-legend"><span><i style="background:var(--accent)"></i>${unit}</span></div>
-    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${grid}
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${grid}${xaxis}
       <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labels}</svg></div>`;
 }
 
