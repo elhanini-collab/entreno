@@ -1,7 +1,7 @@
 // Service worker mínimo. Cachea solo los archivos estáticos propios para que la
 // app abra rápido y funcione sin conexión a nivel de interfaz. Nunca cachea el
 // SDK de Firebase ni las peticiones a Firestore/Auth (esas van siempre a la red).
-const CACHE = "carga-v21";
+const CACHE = "carga-v23";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,6 +15,7 @@ const ASSETS = [
   "./apple-touch-icon.png",
   "./favicon-32.png",
   "./favicon.ico",
+  "./brand-lockup.png",
   "./img/musculos/chest.png",
   "./img/musculos/lats.png",
   "./img/musculos/shoulders.png",
