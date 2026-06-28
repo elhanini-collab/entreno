@@ -849,3 +849,7 @@ a { color: inherit; }
 .lb-nav button { background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-radius: 99px; padding: 11px 18px; font-size: 17px; cursor: pointer; min-width: 56px; }
 .lb-nav .lb-del { color: #e87b7b; font-size: 14px; font-family: var(--mono); }
 .lb-nav button:disabled { opacity: .3; }
+
+/* ====== Botón peligroso (Borrar todo) ====== */
+.btn-danger { width: 100%; background: rgba(229,90,90,0.12); border: 1px solid rgba(229,90,90,0.5); color: #e87b7b; }
+.btn-danger:active { background: rgba(229,90,90,0.22); }

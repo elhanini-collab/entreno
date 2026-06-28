@@ -1734,6 +1734,12 @@ function renderPrinciples() {
         <label class="btn btn-ghost" id="impbtn">Importar<input type="file" accept="application/json,.json" id="impin" hidden></label>
       </div>
 
+      <div class="divider"><span class="label">Zona peligrosa</span><span class="rule"></span></div>
+      <div class="setrow">
+        <div class="set-txt"><b>Borrar todo</b><span>Elimina de forma permanente <b>todos</b> tus entrenos, fotos y medidas. No se puede deshacer. Exporta un backup antes si quieres conservar algo.</span></div>
+      </div>
+      <button class="btn btn-danger" id="wipeall">Borrar todo</button>
+
       <p class="save-hint" style="margin-top:18px">Los vídeos abren una búsqueda en YouTube con buenas demostraciones de cada ejercicio.</p>
     </div>`, "principios");
   bindCommon();
@@ -1763,6 +1769,17 @@ function renderPrinciples() {
   // exportar
   $("#expcsv").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportCSV(); };
   $("#expjson").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportJSON(); };
+
+  // borrar todo (doble confirmación)
+  const wipe = $("#wipeall");
+  if (wipe) wipe.onclick = async () => {
+    if (!confirm("Esto borrará DE FORMA PERMANENTE todos tus entrenos, fotos y medidas, y restablecerá tus preferencias.\n\nNo se puede deshacer. ¿Continuar?")) return;
+    const typed = prompt('Última confirmación. Escribe BORRAR (en mayúsculas) para eliminarlo todo:');
+    if (typed !== "BORRAR") return toast("Cancelado, no se ha borrado nada");
+    wipe.disabled = true; wipe.textContent = "Borrando…";
+    try { await deleteAllData(); toast("Se ha borrado todo"); go("#/days"); }
+    catch (e) { console.error(e); toast("Hubo un error al borrar; reintenta", true); render(); }
+  };
 
   // importar backup
   const imp = $("#impin");
@@ -1797,6 +1814,28 @@ async function importBackup(data) {
     toast(`Importadas ${ok} sesiones`);
     go("#/history");
   } catch (e) { console.error(e); toast(`Importadas ${ok}; fallo en el resto`, true); }
+}
+
+// ---------- borrar absolutamente todo ----------
+async function deleteAllData() {
+  // 1) borrar todas las subcolecciones del usuario en Firestore
+  for (const sub of ["sessions", "progress", "measures"]) {
+    const snap = await getDocs(collection(db, "users", state.user.uid, sub));
+    for (let i = 0; i < snap.docs.length; i += 20) {
+      await Promise.all(snap.docs.slice(i, i + 20).map((d) => deleteDoc(d.ref)));
+    }
+  }
+  // 2) limpiar estado en memoria
+  state.sessions = []; state.photos = []; state.measures = [];
+  state.variants = {}; state.favorites = {};
+  state.progLoaded = true; state.measLoaded = true;
+  state.volWeek = null; state.recapWeek = null; state.cmpMode = false; state.cmpA = null; state.cmpB = null;
+  // 3) limpiar preferencias locales (todo lo de la app)
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("carga")) keys.push(k); }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch (_) {}
 }
 
 // ---------- temporizador ----------
