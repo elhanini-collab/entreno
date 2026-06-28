@@ -261,13 +261,13 @@ function weekTotalSets(weekStartISO) {
 // --- 1RM estimado (Epley) ---
 function epley(weight, reps) { return (weight != null && reps > 0) ? weight * (1 + reps / 30) : 0; }
 function bestE1RM(exId) {
-  let best = 0;
+  let best = 0, date = null;
   state.sessions.forEach((s) => {
     const e = s.entries && s.entries[exId]; if (!e) return;
     const w = workWeight(e); if (w == null) return;
-    entryReps(e).forEach((r) => { const v = epley(w, r); if (v > best) best = v; });
+    entryReps(e).forEach((r) => { const v = epley(w, r); if (v > best) { best = v; date = s.date; } });
   });
-  return best;
+  return { value: best, date };
 }
 
 // --- favoritos (preferencia local) ---
@@ -1239,7 +1239,8 @@ function renderProgExercise(exId) {
   const data = seriesFor(current);
   const withData = data.pts;
   const best = bestFor(current);
-  const e1 = bestE1RM(current);
+  const e1o = bestE1RM(current);
+  const e1 = e1o.value;
   const e1show = data.time ? null : (e1 ? Math.round(e1 * 10) / 10 : (ex.rmInicial ? Math.round(ex.rmInicial * 10) / 10 : null));
 
   const options = DAYS.map((d) =>
@@ -1247,11 +1248,14 @@ function renderProgExercise(exId) {
     d.exercises.map((e) => `<option value="${e.id}" ${e.id === current ? "selected" : ""}>${esc(e.name)}</option>`).join("") +
     `</optgroup>`).join("");
 
+  const when = (iso) => iso ? `<div class="rec-when">${fmtDate(iso)}</div>` : "";
+  const bestVal = data.time ? best.repsMax : best.weight;
+  const bestDate = data.time ? best.dR : best.dW;
   const stat3 = data.time
-    ? `<div class="stat"><div class="k">Mejor aguante</div><div class="v">${best.repsMax || "—"}<small> s</small></div></div>`
-    : `<div class="stat"><div class="k">Mejor volumen</div><div class="v">${best.volume || "—"}<small> kg·rep</small></div></div>`;
+    ? `<div class="stat"><div class="k">Mejor aguante</div><div class="v">${best.repsMax || "—"}<small> s</small></div>${best.repsMax ? when(best.dR) : ""}</div>`
+    : `<div class="stat"><div class="k">Mejor volumen</div><div class="v">${best.volume || "—"}<small> kg·rep</small></div>${best.volume ? when(best.dV) : ""}</div>`;
   const stat4 = data.time ? "" :
-    `<div class="stat"><div class="k">1RM est.</div><div class="v">${e1show != null ? e1show : "—"}<small> kg</small></div></div>`;
+    `<div class="stat"><div class="k">1RM est.</div><div class="v">${e1show != null ? e1show : "—"}<small> kg</small></div>${e1 && e1o.date ? when(e1o.date) : ""}</div>`;
 
   shell(`
     <div class="screen">
@@ -1261,7 +1265,7 @@ function renderProgExercise(exId) {
       ${lineChart(data, ex)}
       <div class="statgrid">
         <div class="stat"><div class="k">Sesiones</div><div class="v">${withData.length}</div></div>
-        <div class="stat"><div class="k">${data.time ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${(data.time ? best.repsMax : best.weight) || "—"}<small> ${data.time ? "s" : "kg"}</small></div></div>
+        <div class="stat"><div class="k">${data.time ? "Mejor aguante" : "Mejor peso"}</div><div class="v">${bestVal || "—"}<small> ${data.time ? "s" : "kg"}</small></div>${bestVal ? when(bestDate) : ""}</div>
         ${stat3}
         ${stat4}
       </div>
@@ -1331,8 +1335,9 @@ function renderProgRecords() {
         ? (b.repsMax ? `${b.repsMax} s` : "—")
         : (b.weight ? `${b.weight} kg` : "—");
       const sub = ex.unit === "seg" ? "" : (b.volume ? `${b.volume} kg·rep` : "");
+      const recDate = ex.unit === "seg" ? b.dR : b.dW;
       return `<div class="rec-row ${has ? "" : "muted"}">
-        <div class="rec-name">${esc(ex.name)}</div>
+        <div class="rec-name">${esc(ex.name)}${recDate ? `<span class="rec-date">${fmtDate(recDate)}</span>` : ""}</div>
         <div class="rec-val">${val}${sub ? `<small>${sub}</small>` : ""}</div>
       </div>`;
     }).join("");

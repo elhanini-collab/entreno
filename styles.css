@@ -822,3 +822,7 @@ a { color: inherit; }
 .segbar { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .segbar::-webkit-scrollbar { display: none; }
 .segbar .seg { white-space: nowrap; }
+
+/* ====== Fecha de récords ====== */
+.rec-date { display: block; font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); margin-top: 3px; }
+.rec-when { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
