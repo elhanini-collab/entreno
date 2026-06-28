@@ -457,6 +457,73 @@ async function removePhoto(id) {
   state.photos = state.photos.filter((p) => p.id !== id);
 }
 
+// --- descargar todas las fotos en un .zip (método STORE, sin librerías) ---
+const _crcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xFFFFFFFF; for (let i = 0; i < bytes.length; i++) c = _crcTable[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function dataURLtoBytes(u) {
+  const i = u.indexOf(","); const meta = u.slice(0, i), data = u.slice(i + 1);
+  if (/;base64/i.test(meta)) { const bin = atob(data); const b = new Uint8Array(bin.length); for (let j = 0; j < bin.length; j++) b[j] = bin.charCodeAt(j); return b; }
+  return new TextEncoder().encode(decodeURIComponent(data));
+}
+function buildZip(files) {
+  const u16 = (n) => [n & 255, (n >> 8) & 255], u32 = (n) => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255];
+  const enc = new TextEncoder(); const parts = []; const central = []; let offset = 0;
+  files.forEach((f) => {
+    const nameB = enc.encode(f.name), data = f.bytes, crc = crc32(data);
+    const local = [0x50, 0x4b, 0x03, 0x04, ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nameB.length), ...u16(0)];
+    parts.push(new Uint8Array(local), nameB, data);
+    central.push({ nameB, crc, size: data.length, offset });
+    offset += 30 + nameB.length + data.length;
+  });
+  const cdStart = offset; const cdParts = [];
+  central.forEach((c) => {
+    const h = [0x50, 0x4b, 0x01, 0x02, ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(c.crc), ...u32(c.size), ...u32(c.size), ...u16(c.nameB.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(c.offset)];
+    cdParts.push(new Uint8Array(h), c.nameB); offset += 46 + c.nameB.length;
+  });
+  const eocd = new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...u16(0), ...u16(0), ...u16(central.length), ...u16(central.length), ...u32(offset - cdStart), ...u32(cdStart), ...u16(0)]);
+  return new Blob([...parts, ...cdParts, eocd], { type: "application/zip" });
+}
+function downloadAllPhotos() {
+  if (!state.photos.length) return toast("No hay fotos que descargar", true);
+  const files = [...state.photos].sort((a, b) => (a.date < b.date ? -1 : 1)).map((p, i) => {
+    const ext = /image\/svg/i.test(p.img.slice(0, 30)) ? "svg" : "jpg";
+    return { name: `otra-repe-${p.date}-${String(i + 1).padStart(2, "0")}.${ext}`, bytes: dataURLtoBytes(p.img) };
+  });
+  const blob = buildZip(files);
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `otra-repe-fotos-${todayISO()}.zip`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  toast(`Descargando ${files.length} fotos`);
+}
+
+// --- visor de foto a pantalla completa ---
+function openPhoto(id) {
+  let cur = state.photos.findIndex((p) => p.id === id); if (cur < 0) return;
+  const overlay = document.createElement("div"); overlay.className = "lightbox";
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") go2(-1); else if (e.key === "ArrowRight") go2(1); };
+  const go2 = (d) => { const n = cur + d; if (n >= 0 && n < state.photos.length) { cur = n; show(); } };
+  const show = () => {
+    const p = state.photos[cur];
+    overlay.innerHTML = `
+      <div class="lb-top"><span class="lb-date">${fmtDate(p.date)} · ${cur + 1}/${state.photos.length}</span><button class="lb-close" aria-label="Cerrar">×</button></div>
+      <div class="lb-img"><img src="${p.img}" alt=""></div>
+      <div class="lb-nav"><button class="lb-prev" ${cur <= 0 ? "disabled" : ""} aria-label="Anterior">‹</button><button class="lb-del">Borrar</button><button class="lb-next" ${cur >= state.photos.length - 1 ? "disabled" : ""} aria-label="Siguiente">›</button></div>`;
+    overlay.querySelector(".lb-close").onclick = close;
+    overlay.querySelector(".lb-prev").onclick = () => go2(-1);
+    overlay.querySelector(".lb-next").onclick = () => go2(1);
+    overlay.querySelector(".lb-del").onclick = async () => {
+      if (!confirm("¿Borrar esta foto?")) return;
+      const delId = state.photos[cur].id;
+      try { await removePhoto(delId); toast("Foto borrada"); } catch (_) { toast("No se pudo borrar", true); }
+      close(); render();
+    };
+  };
+  overlay.onclick = (e) => { if (e.target === overlay || e.target.classList.contains("lb-img")) close(); };
+  document.addEventListener("keydown", onKey);
+  $(".frame").appendChild(overlay); show();
+}
+
 // ---------- medidas corporales (Firestore: users/{uid}/measures) ----------
 async function loadMeasures() {
   state.measLoaded = false;
@@ -1384,11 +1451,10 @@ function renderProgPhotos() {
   }
 
   const grid = photos.length ? photos.map((p) => `
-    <figure class="photo-item">
-      <img src="${p.img}" alt="${esc(p.date)}">
-      <figcaption>${fmtDate(p.date)}</figcaption>
-      <button class="photo-del" data-del="${p.id}" aria-label="Borrar">×</button>
-    </figure>`).join("") : `<div class="empty"><p>Aún no hay fotos. Añade la primera para ver tu evolución.</p></div>`;
+    <button class="photo-thumb" data-view="${p.id}">
+      <img src="${p.img}" alt="${esc(p.date)}" loading="lazy">
+      <span class="pt-date">${fmtDate(p.date)}</span>
+    </button>`).join("") : `<div class="empty"><p>Aún no hay fotos. Añade la primera para ver tu evolución.</p></div>`;
 
   shell(`
     <div class="screen">
@@ -1397,12 +1463,15 @@ function renderProgPhotos() {
       <div class="photo-actions">
         <label class="addphoto" id="addlbl">${I.image}<span>Añadir foto</span><input type="file" accept="image/*" id="photoin" hidden></label>
         ${photos.length >= 2 ? `<button class="btn btn-ghost" id="cmpbtn">Comparar</button>` : ""}
+        ${photos.length ? `<button class="btn btn-ghost" id="dlall">Descargar todas</button>` : ""}
       </div>
       <div class="photogrid">${state.progLoaded ? grid : `<div class="empty"><p>Cargando…</p></div>`}</div>
-      <p class="save-hint" style="margin-top:14px">Las fotos se guardan en tu cuenta (comprimidas). Una cada 2-4 semanas con la misma luz y pose ayuda a ver cambios.</p>
+      <p class="save-hint" style="margin-top:14px">Toca una foto para verla grande. Se guardan en tu cuenta (comprimidas); descarga el zip de vez en cuando como copia de seguridad.</p>
     </div>`, "progress");
   bindCommon();
   const cmp = $("#cmpbtn"); if (cmp) cmp.onclick = () => { state.cmpMode = true; render(); };
+  const dla = $("#dlall"); if (dla) dla.onclick = downloadAllPhotos;
+  document.querySelectorAll("[data-view]").forEach((b) => b.onclick = () => openPhoto(b.dataset.view));
   const input = $("#photoin");
   if (input) input.onchange = async (e) => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
@@ -1411,12 +1480,6 @@ function renderProgPhotos() {
     catch (err) { console.error(err); toast("No se pudo guardar la foto", true); }
     render();
   };
-  document.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
-    if (!confirm("¿Borrar esta foto?")) return;
-    try { await removePhoto(b.dataset.del); toast("Foto borrada"); }
-    catch (err) { console.error(err); toast("No se pudo borrar", true); }
-    render();
-  });
 }
 
 // ---------- Medidas corporales ----------
