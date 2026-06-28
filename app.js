@@ -26,8 +26,22 @@ const state = {
   favorites: {},     // { exId: true }  ejercicios marcados como favoritos
   photos: [],        // fotos de progreso
   progLoaded: false,
+  measures: [],      // [{id, date, values:{peso,cintura,...}}]
+  measLoaded: false,
+  measMetric: "peso",
   volWeek: null,     // semana visible en "Volumen"
+  recapWeek: null,   // semana visible en "Resumen"
 };
+
+// métricas de medidas corporales
+const MEASURE_FIELDS = [
+  { key: "peso", label: "Peso", unit: "kg", step: "0.1" },
+  { key: "cintura", label: "Cintura", unit: "cm", step: "0.5" },
+  { key: "pecho", label: "Pecho", unit: "cm", step: "0.5" },
+  { key: "brazo", label: "Brazo", unit: "cm", step: "0.5" },
+  { key: "muslo", label: "Muslo", unit: "cm", step: "0.5" },
+  { key: "cadera", label: "Cadera", unit: "cm", step: "0.5" },
+];
 
 function loadVariants() {
   try { return JSON.parse(localStorage.getItem("carga_variants") || "{}") || {}; }
@@ -273,6 +287,45 @@ function weekStreak() {
   return streak;
 }
 
+// racha de semanas que termina en la semana indicada (para el resumen de semanas pasadas)
+function streakEndingAt(weekStartISO) {
+  const weeks = new Set(state.sessions.map((s) => weekRange(s.date).start));
+  let streak = 0, cur = weekRange(weekStartISO).start;
+  while (weeks.has(cur)) { streak++; cur = addDaysISO(cur, -7); }
+  return streak;
+}
+// mejor marca comparable de un ejercicio en una sesión (e1RM para reps, segundos para tiempo)
+function exMetricInSession(ex, e) {
+  if (ex.unit === "seg") { const r = entryReps(e); return r.length ? Math.max(...r) : 0; }
+  const w = workWeight(e), reps = entryReps(e);
+  if (w == null || !reps.length) return 0;
+  return Math.max(...reps.map((r) => epley(w, r)));
+}
+// resumen semanal: adherencia, volumen, PRs nuevos
+function weeklyRecap(weekStartISO) {
+  const { start, end } = weekRange(weekStartISO);
+  const wk = state.sessions.filter((s) => s.date >= start && s.date <= end);
+  const vol = weeklyVolume(weekStartISO);
+  const totalSets = Math.round(vol.groups.reduce((a, g) => a + g.sets, 0) * 2) / 2;
+  const totalVol = Math.round(vol.groups.reduce((a, g) => a + g.vol, 0));
+  const durationTotal = wk.reduce((a, s) => a + (s.durationSec || 0), 0);
+  const exIds = new Set(); wk.forEach((s) => Object.keys(s.entries || {}).forEach((id) => exIds.add(id)));
+  const prs = [];
+  exIds.forEach((id) => {
+    const ex = EXERCISE_INDEX[id]; if (!ex) return;
+    let before = 0, during = 0;
+    state.sessions.forEach((s) => {
+      const e = s.entries && s.entries[id]; if (!e) return;
+      const v = exMetricInSession(ex, e);
+      if (s.date < start) { if (v > before) before = v; }
+      else if (s.date <= end) { if (v > during) during = v; }
+    });
+    if (during > before + 1e-6 && during > 0) prs.push({ id, name: ex.name });
+  });
+  return { start, end, sessionCount: wk.length, target: DAYS.length, totalSets, totalVol,
+    durationTotal, groups: vol.groups.filter((g) => g.target || g.sets), prs, streak: streakEndingAt(weekStartISO) };
+}
+
 // --- ejercicios listos para subir peso (doble progresión cumplida) ---
 function readyToProgress() {
   const out = [];
@@ -402,6 +455,36 @@ async function addPhoto(file, dateISO) {
 async function removePhoto(id) {
   await deleteDoc(doc(db, "users", state.user.uid, "progress", id));
   state.photos = state.photos.filter((p) => p.id !== id);
+}
+
+// ---------- medidas corporales (Firestore: users/{uid}/measures) ----------
+async function loadMeasures() {
+  state.measLoaded = false;
+  try {
+    const snap = await getDocs(query(collection(db, "users", state.user.uid, "measures"), orderBy("date", "desc")));
+    state.measures = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) { console.error(e); state.measures = []; }
+  state.measLoaded = true;
+}
+async function addMeasure(dateISO, values) {
+  const clean = {};
+  Object.entries(values).forEach(([k, v]) => { const n = num(v); if (n != null) clean[k] = n; });
+  if (!Object.keys(clean).length) throw new Error("sin valores");
+  const data = { date: dateISO || todayISO(), values: clean, createdAt: serverTimestamp() };
+  const ref = await addDoc(collection(db, "users", state.user.uid, "measures"), data);
+  state.measures.unshift({ id: ref.id, ...data });
+  state.measures.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+async function removeMeasure(id) {
+  await deleteDoc(doc(db, "users", state.user.uid, "measures", id));
+  state.measures = state.measures.filter((m) => m.id !== id);
+}
+// serie temporal (ascendente) de una métrica
+function measureSeries(metric) {
+  return state.measures
+    .filter((m) => m.values && m.values[metric] != null)
+    .map((m) => ({ date: m.date, value: m.values[metric] }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
 // ---------- imagen del ejercicio (fallback jpg → png → marcador) ----------
@@ -1130,19 +1213,23 @@ function progSeg(active, exId) {
     ${item("ex", exHref, "Ejercicio")}
     ${item("vol", "#/progress/vol", "Volumen")}
     ${item("pr", "#/progress/pr", "Récords")}
+    ${item("med", "#/progress/med", "Medidas")}
     ${item("fotos", "#/progress/fotos", "Fotos")}
+    ${item("recap", "#/progress/recap", "Resumen")}
   </div>`;
 }
 
 function renderProgress(sub, arg) {
-  const tabs = ["ex", "vol", "pr", "fotos"];
+  const tabs = ["ex", "vol", "pr", "med", "fotos", "recap"];
   let tab = "ex", exId = null;
   if (tabs.includes(sub)) { tab = sub; if (sub === "ex") exId = arg; }
   else if (sub) { tab = "ex"; exId = sub; } // compat con #/progress/<id>
 
   if (tab === "vol") return renderProgVolume();
   if (tab === "pr") return renderProgRecords();
+  if (tab === "med") return renderProgMeasures();
   if (tab === "fotos") return renderProgPhotos();
+  if (tab === "recap") return renderProgRecap();
   return renderProgExercise(exId);
 }
 
@@ -1325,6 +1412,206 @@ function renderProgPhotos() {
     catch (err) { console.error(err); toast("No se pudo borrar", true); }
     render();
   });
+}
+
+// ---------- Medidas corporales ----------
+function measLineChart(series, unit) {
+  if (!series.length) return `<div class="empty"><p>Aún no hay datos de esta medida.</p></div>`;
+  const W = 320, H = 160, padX = 16, padY = 22;
+  const vals = series.map((p) => p.value);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  if (min === max) { min -= 1; max += 1; }
+  const x = (i) => padX + (series.length === 1 ? (W - 2 * padX) / 2 : (i / (series.length - 1)) * (W - 2 * padX));
+  const y = (v) => H - padY - ((v - min) / (max - min)) * (H - 2 * padY);
+  const path = series.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+  const dots = series.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="3.5" fill="var(--accent)"/>`).join("");
+  const labels = series.map((p, i) =>
+    `<text x="${x(i).toFixed(1)}" y="${(y(p.value) - 8).toFixed(1)}" font-size="9" fill="var(--ink)" text-anchor="middle" font-family="Space Mono, monospace">${p.value}</text>`).join("");
+  const grid = [0, 0.5, 1].map((t) => { const yy = padY + t * (H - 2 * padY); return `<line x1="${padX}" y1="${yy}" x2="${W - padX}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`; }).join("");
+  return `<div class="chartcard"><div class="chart-legend"><span><i style="background:var(--accent)"></i>${unit}</span></div>
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${grid}
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labels}</svg></div>`;
+}
+
+function renderProgMeasures() {
+  if (!state.measLoaded) loadMeasures().then(() => { if (parseHash().name === "progress") render(); });
+  const metric = state.measMetric || "peso";
+  const fld = MEASURE_FIELDS.find((f) => f.key === metric) || MEASURE_FIELDS[0];
+  const series = measureSeries(metric);
+  const last = series.length ? series[series.length - 1] : null;
+  const prev = series.length > 1 ? series[series.length - 2] : null;
+  const delta = last && prev ? Math.round((last.value - prev.value) * 10) / 10 : null;
+  const deltaTxt = delta == null ? "" : (delta === 0 ? "= igual" : (delta > 0 ? `▲ +${delta}` : `▼ ${delta}`) + ` ${fld.unit}`);
+
+  const metricChips = MEASURE_FIELDS.map((f) =>
+    `<button class="mchip ${f.key === metric ? "on" : ""}" data-metric="${f.key}">${f.label}</button>`).join("");
+  const inputs = MEASURE_FIELDS.map((f) =>
+    `<label class="minput"><span>${f.label} <small>${f.unit}</small></span>
+      <input type="number" inputmode="decimal" step="${f.step}" data-mfield="${f.key}" placeholder="—"></label>`).join("");
+
+  const history = state.measLoaded ? (state.measures.length ? state.measures.map((m) => {
+    const parts = MEASURE_FIELDS.filter((f) => m.values && m.values[f.key] != null)
+      .map((f) => `${f.label} ${m.values[f.key]}${f.unit}`).join(" · ");
+    return `<div class="measrow"><div><div class="meas-d">${fmtDate(m.date)}</div><div class="meas-v">${esc(parts || "—")}</div></div>
+      <button class="chip danger" data-delmeas="${m.id}">Borrar</button></div>`;
+  }).join("") : `<div class="empty"><p>Aún no has anotado medidas.</p></div>`) : `<div class="empty"><p>Cargando…</p></div>`;
+
+  shell(`
+    <div class="screen">
+      ${topbar("Progreso", "Tu evolución")}
+      ${progSeg("med")}
+      <div class="mchips">${metricChips}</div>
+      ${measLineChart(series, fld.unit)}
+      <div class="statgrid">
+        <div class="stat"><div class="k">${fld.label} actual</div><div class="v">${last ? last.value : "—"}<small> ${fld.unit}</small></div></div>
+        <div class="stat"><div class="k">Cambio</div><div class="v" style="font-size:20px">${deltaTxt || "—"}</div></div>
+        <div class="stat"><div class="k">Registros</div><div class="v">${series.length}</div></div>
+      </div>
+      <div class="divider"><span class="label">Nueva medición</span><span class="rule"></span></div>
+      <label class="date" style="margin-bottom:10px">${I.clock}<input type="date" id="mdate" value="${todayISO()}"></label>
+      <div class="mgrid">${inputs}</div>
+      <div class="save-row"><button class="btn btn-primary" id="savemeas">Guardar medición</button>
+        <p class="save-hint">Rellena solo lo que quieras. Mide a la misma hora (mejor en ayunas) para comparar mejor.</p></div>
+      <div class="divider"><span class="label">Historial</span><span class="rule"></span></div>
+      <div class="measlist">${history}</div>
+    </div>`, "progress");
+  bindCommon();
+  document.querySelectorAll("[data-metric]").forEach((b) => b.onclick = () => { state.measMetric = b.dataset.metric; render(); });
+  $("#savemeas").onclick = async () => {
+    const values = {};
+    document.querySelectorAll("[data-mfield]").forEach((i) => { if (i.value !== "") values[i.dataset.mfield] = i.value; });
+    const date = ($("#mdate") && $("#mdate").value) || todayISO();
+    if (!Object.keys(values).length) return toast("Escribe al menos una medida", true);
+    const btn = $("#savemeas"); btn.disabled = true; btn.textContent = "Guardando…";
+    try { await addMeasure(date, values); toast("Medición guardada"); }
+    catch (e) { console.error(e); toast("No se pudo guardar", true); }
+    render();
+  };
+  document.querySelectorAll("[data-delmeas]").forEach((b) => b.onclick = async () => {
+    if (!confirm("¿Borrar esta medición?")) return;
+    try { await removeMeasure(b.dataset.delmeas); toast("Medición borrada"); }
+    catch (e) { console.error(e); toast("No se pudo borrar", true); }
+    render();
+  });
+}
+
+// ---------- Resumen semanal (tarjeta compartible) ----------
+function fmtDurShort(sec) { if (!sec) return "—"; const m = Math.round(sec / 60); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`; }
+
+function renderProgRecap() {
+  const thisMon = weekRange(todayISO()).start;
+  const ref = state.recapWeek || thisMon;
+  const recap = weeklyRecap(ref);
+  const atCurrent = recap.start >= thisMon;
+
+  shell(`
+    <div class="screen">
+      ${topbar("Progreso", "Tu evolución")}
+      ${progSeg("recap")}
+      <div class="wknav">
+        <button class="navbtn" id="rprev">‹</button>
+        <div class="wklabel">${fmtDate(recap.start)} – ${fmtDate(recap.end)}</div>
+        <button class="navbtn ${atCurrent ? "off" : ""}" id="rnext" ${atCurrent ? "disabled" : ""}>›</button>
+      </div>
+      <canvas id="recapcanvas" class="recapcanvas" width="1080" height="1350" aria-label="Resumen semanal"></canvas>
+      <div class="recap-actions">
+        <button class="btn btn-primary" id="shareRecap">Compartir</button>
+        <button class="btn btn-ghost" id="dlRecap">Descargar</button>
+      </div>
+      <p class="save-hint" style="margin-top:6px">Tu semana en una tarjeta: adherencia, récords nuevos y volumen por grupo.</p>
+    </div>`, "progress");
+  bindCommon();
+
+  const canvas = $("#recapcanvas");
+  const draw = () => drawRecapCard(canvas, recap);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw); else draw();
+  setTimeout(draw, 200); // refuerzo por si las fuentes tardan
+
+  $("#rprev").onclick = () => { state.recapWeek = addDaysISO(recap.start, -7); render(); };
+  const nx = $("#rnext"); if (nx) nx.onclick = () => { if (!atCurrent) { state.recapWeek = addDaysISO(recap.start, 7); render(); } };
+  $("#dlRecap").onclick = () => canvas.toBlob((b) => {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b);
+    a.download = `otra-repe-semana-${recap.start}.png`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, "image/png");
+  $("#shareRecap").onclick = () => canvas.toBlob(async (b) => {
+    const file = new File([b], `otra-repe-semana-${recap.start}.png`, { type: "image/png" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Mi semana en Otra Repe" });
+      } else { const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); toast("Imagen descargada"); }
+    } catch (e) { /* cancelado */ }
+  }, "image/png");
+}
+
+function drawRecapCard(canvas, r) {
+  const ctx = canvas.getContext("2d"); const W = 1080, H = 1350;
+  const ESP = "#16130f", SURF = "#1f1a14", AMB = "#f5a623", CREAM = "#f3ece1", MUT = "#9d917d", LINE = "rgba(245,166,35,0.18)";
+  const round = (x, y, w, h, rd) => { ctx.beginPath(); ctx.moveTo(x + rd, y); ctx.arcTo(x + w, y, x + w, y + h, rd); ctx.arcTo(x + w, y + h, x, y + h, rd); ctx.arcTo(x, y + h, x, y, rd); ctx.arcTo(x, y, x + w, y, rd); ctx.closePath(); };
+  ctx.fillStyle = ESP; ctx.fillRect(0, 0, W, H);
+
+  // marca +1
+  round(64, 60, 96, 96, 22); ctx.fillStyle = AMB; ctx.fill();
+  ctx.fillStyle = ESP; ctx.font = "800 56px Archivo, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("+1", 112, 110);
+  ctx.textAlign = "left";
+  ctx.fillStyle = CREAM; ctx.font = "800 44px Archivo, sans-serif"; ctx.fillText("Otra Repe", 180, 92);
+  ctx.fillStyle = MUT; ctx.font = "400 26px 'Space Mono', monospace"; ctx.fillText("Resumen semanal", 182, 130);
+  ctx.fillStyle = AMB; ctx.font = "700 26px 'Space Mono', monospace"; ctx.textAlign = "right";
+  ctx.fillText(`${fmtDate(r.start)} – ${fmtDate(r.end)}`, W - 64, 110); ctx.textAlign = "left";
+
+  // 3 stats grandes
+  const sy = 196, sh = 200, gap = 24, sw = (W - 128 - 2 * gap) / 3;
+  const stat = (i, big, lbl, sub) => {
+    const x = 64 + i * (sw + gap);
+    round(x, sy, sw, sh, 22); ctx.fillStyle = SURF; ctx.fill();
+    ctx.fillStyle = AMB; ctx.font = "800 76px Archivo, sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(big, x + sw / 2, sy + 86);
+    ctx.fillStyle = CREAM; ctx.font = "400 24px 'Space Mono', monospace"; ctx.fillText(lbl, x + sw / 2, sy + 138);
+    if (sub) { ctx.fillStyle = MUT; ctx.font = "400 20px 'Space Mono', monospace"; ctx.fillText(sub, x + sw / 2, sy + 168); }
+    ctx.textAlign = "left";
+  };
+  stat(0, `${r.sessionCount}/${r.target}`, "sesiones", r.sessionCount >= r.target ? "¡completa!" : "esta semana");
+  stat(1, String(fmtSets(r.totalSets)), "series", "efectivas");
+  stat(2, fmtDurShort(r.durationTotal), "entrenando", `${r.totalVol.toLocaleString("es-ES")} kg·rep`);
+
+  // Récords nuevos
+  let y = sy + sh + 56;
+  ctx.fillStyle = CREAM; ctx.font = "800 34px Archivo, sans-serif"; ctx.fillText("Récords nuevos", 64, y);
+  ctx.fillStyle = AMB; ctx.font = "800 34px Archivo, sans-serif"; ctx.textAlign = "right"; ctx.fillText(String(r.prs.length), W - 64, y); ctx.textAlign = "left";
+  y += 18;
+  if (r.prs.length) {
+    r.prs.slice(0, 4).forEach((p) => {
+      y += 50; ctx.fillStyle = AMB; ctx.font = "700 30px 'Space Mono', monospace"; ctx.fillText("★", 64, y);
+      ctx.fillStyle = CREAM; ctx.font = "400 30px Archivo, sans-serif";
+      let name = p.name; while (ctx.measureText(name).width > W - 200 && name.length > 4) name = name.slice(0, -2);
+      if (name !== p.name) name += "…";
+      ctx.fillText(name, 104, y);
+    });
+    if (r.prs.length > 4) { y += 44; ctx.fillStyle = MUT; ctx.font = "400 24px 'Space Mono', monospace"; ctx.fillText(`+${r.prs.length - 4} más`, 104, y); }
+  } else { y += 50; ctx.fillStyle = MUT; ctx.font = "400 28px Archivo, sans-serif"; ctx.fillText("Sigue empujando — la próxima caen.", 64, y); }
+
+  // Volumen por grupo
+  y += 72; ctx.fillStyle = CREAM; ctx.font = "800 34px Archivo, sans-serif"; ctx.fillText("Volumen por grupo", 64, y);
+  y += 24;
+  const groups = r.groups.filter((g) => g.target || g.sets).slice(0, 8);
+  const maxV = Math.max(1, ...groups.map((g) => Math.max(g.sets, g.target || 0)));
+  const barX = 280, barW = W - 64 - barX;
+  groups.forEach((g) => {
+    y += 52;
+    ctx.fillStyle = CREAM; ctx.font = "400 28px Archivo, sans-serif"; ctx.fillText(g.group, 64, y);
+    round(barX, y - 26, barW, 30, 15); ctx.fillStyle = SURF; ctx.fill();
+    const w = Math.max(8, Math.round(barW * Math.min(1, g.sets / maxV)));
+    const hit = g.target && g.sets >= g.target;
+    round(barX, y - 26, w, 30, 15); ctx.fillStyle = hit ? "#5bb98c" : AMB; ctx.fill();
+    ctx.fillStyle = MUT; ctx.font = "400 22px 'Space Mono', monospace"; ctx.textAlign = "right";
+    ctx.fillText(`${fmtSets(g.sets)}${g.target ? "/" + fmtSets(g.target) : ""}`, W - 64, y - 4); ctx.textAlign = "left";
+  });
+
+  // footer
+  ctx.strokeStyle = LINE; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(64, H - 108); ctx.lineTo(W - 64, H - 108); ctx.stroke();
+  ctx.fillStyle = AMB; ctx.font = "700 30px 'Space Mono', monospace"; ctx.fillText(`Racha: ${r.streak} ${r.streak === 1 ? "semana" : "semanas"}`, 64, H - 62);
+  ctx.fillStyle = MUT; ctx.font = "400 24px 'Space Mono', monospace"; ctx.textAlign = "right"; ctx.fillText("Otra Repe · +1", W - 64, H - 62); ctx.textAlign = "left";
 }
 
 function renderPrinciples() {
@@ -1553,6 +1840,7 @@ async function boot() {
       if (!location.hash) go("#/days"); else render();
     } else {
       state.loaded = false; state.sessions = []; state.photos = []; state.progLoaded = false;
+      state.measures = []; state.measLoaded = false;
       if (reminderTimer) { clearInterval(reminderTimer); reminderTimer = null; }
       render();
     }

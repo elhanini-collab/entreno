@@ -798,3 +798,27 @@ a { color: inherit; }
 .brandrow { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
 .logomark { display: block; flex: none; }
 .brandname { font-family: "Archivo", system-ui, sans-serif; font-weight: 800; font-size: 21px; letter-spacing: -0.3px; color: var(--ink); }
+
+/* ====== Medidas corporales ====== */
+.mchips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.mchip { font-family: var(--mono); font-size: 12px; padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.mchip.on { border-color: var(--accent); background: rgba(245,166,35,0.12); color: var(--accent); }
+.mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.minput { display: flex; flex-direction: column; gap: 6px; }
+.minput span { font-size: 13px; color: var(--muted); }
+.minput small { color: var(--muted); opacity: .7; }
+.minput input { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); padding: 11px 12px; font-size: 16px; font-family: var(--mono); }
+.measlist { display: flex; flex-direction: column; gap: 8px; }
+.measrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; }
+.meas-d { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.meas-v { font-size: 14px; margin-top: 2px; }
+
+/* ====== Resumen semanal (tarjeta) ====== */
+.recapcanvas { width: 100%; height: auto; display: block; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); }
+.recap-actions { display: flex; gap: 10px; margin-top: 14px; }
+.recap-actions .btn { flex: 1; }
+
+/* segbar desplazable cuando hay muchas pestañas */
+.segbar { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.segbar::-webkit-scrollbar { display: none; }
+.segbar .seg { white-space: nowrap; }
