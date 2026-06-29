@@ -351,20 +351,6 @@ function bestFor(exId, excludeId) {
   return { weight, volume, repsMax, dW, dV, dR };
 }
 
-// --- descanso prescrito → segundos (usa el valor numérico del plan) ---
-function restSeconds(ex) {
-  if (ex && ex.restMin) return ex.restMin;
-  const d = (ex && ex.descanso) || "";
-  const mn = d.match(/(\d+)\s*(?:[-–]\s*\d+)?\s*min/i);
-  if (mn) return parseInt(mn[1], 10) * 60;
-  const sc = d.match(/(\d+)\s*s/i);
-  if (sc) return parseInt(sc[1], 10);
-  return 90;
-}
-
-// --- auto-descanso (preferencia local) ---
-function autoRestOn() { try { return localStorage.getItem("carga_autorest") !== "0"; } catch (_) { return true; } }
-function setAutoRest(v) { try { localStorage.setItem("carga_autorest", v ? "1" : "0"); } catch (_) {} }
 
 // --- exportar / backup ---
 function download(name, text, mime) {
@@ -762,7 +748,10 @@ function renderSession(dayId) {
   const day = DAYS.find((d) => d.id === dayId);
   if (!day) return go("#/days");
   if (!draft || draft.dayId !== dayId) { initDraft(dayId); draft.pendingCue = true; }
-  if (draft.idx >= day.exercises.length) return renderSessionSummary(day);
+  if (draft.idx >= day.exercises.length) {
+    if (!draft.editingId && !draft.celebrated) return renderCelebrate(day);
+    return renderSessionSummary(day);
+  }
   if (draft.pendingCue) return renderCue(day);
   renderStep(day);
 }
@@ -783,6 +772,19 @@ function renderCue(day) {
   const proceed = () => { if (!draft || !draft.pendingCue) return; draft.pendingCue = false; renderStep(day); window.scrollTo(0, 0); };
   const t = setTimeout(proceed, 7000);
   $("#cue").onclick = () => { clearTimeout(t); proceed(); };
+}
+
+// pantalla de celebración al terminar la sesión (~3 s), antes del resumen
+function renderCelebrate(day) {
+  root.innerHTML = `
+    <div class="celebrate" id="celebrate">
+      <div class="celebrate-emoji">🎉</div>
+      <div class="celebrate-title">¡Enhorabuena!</div>
+      <div class="celebrate-sub">Otra sesión más completada</div>
+    </div>`;
+  const done = () => { if (!draft) return; draft.celebrated = true; renderSessionSummary(day); window.scrollTo(0, 0); };
+  const t = setTimeout(done, 3000);
+  $("#celebrate").onclick = () => { clearTimeout(t); done(); };
 }
 
 function renderStep(day) {
@@ -842,10 +844,11 @@ function renderStep(day) {
     const frames = demoImgs.map((src, k) =>
       `<img class="fr fr${k}" src="${src}" alt="${k === 0 ? esc(ex.name) : ""}" ${k === 0 ? `onload="this.parentElement.querySelector('.photo-ph').style.display='none'" onerror="this.style.display='none'"` : `onerror="this.style.display='none'"`}>`
     ).join("");
-    photoHtml = `<div class="photo demo">
+    photoHtml = `<div class="photo demo" data-zoom="1">
           <div class="photo-ph">${I.image}<span>Demostración no disponible</span></div>
           ${frames}
           <span class="photo-src">${esc(exerciseSource(ex.id, ex.isVariant))}</span>
+          <span class="photo-zoom" aria-hidden="true">⤢</span>
         </div>`;
   } else {
     const localSrc = ex.isVariant ? `img/${ex.id}_v.jpg` : `img/${ex.id}.jpg`;
@@ -872,6 +875,12 @@ function renderStep(day) {
           <div class="ex-scheme">${esc(ex.scheme)}<span class="rir">RIR ${esc(ex.rir)}</span></div>
         </div>
 
+        ${base.variant ? `
+        <div class="swap-note">${ex.isVariant
+            ? `↳ Variante de <b>${esc(base.name)}</b>`
+            : `Alternativa: <b>${esc(base.variant.name)}</b>`}</div>
+        <button class="chip swap" data-swap="${base.id}">${I.swap} ${ex.isVariant ? "Usar original" : "Cambiar ejercicio"}</button>` : ""}
+
         <div class="ex-meta">${I.clock} Descanso ${esc(ex.descanso || "—")} · Tempo ${esc(ex.tempo || "—")}</div>
 
         <div class="tagrow">
@@ -885,22 +894,16 @@ function renderStep(day) {
 
         ${muscles}
 
-        ${base.variant ? `<div class="swap-note">${ex.isVariant
-            ? `↳ Variante de <b>${esc(base.name)}</b>`
-            : `Alternativa: <b>${esc(base.variant.name)}</b>`}</div>` : ""}
-
         ${ex.calienta ? `<div class="warmup">${I.clock} ${esc(ex.calientaTxt || "Haz 1-2 series de aproximación antes de las efectivas.")}</div>` : ""}
 
         <div class="ex-tools">
           <a class="chip" href="${ex.video || videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
-          <button class="chip" data-ejec="${ex.id}">Cómo se hace</button>
-          <button class="chip" data-err="${ex.id}">Errores a evitar</button>
+          <button class="chip" data-info="how">Cómo se hace</button>
+          <button class="chip" data-info="err">Errores a evitar</button>
           ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
-          ${base.variant ? `<button class="chip swap" data-swap="${base.id}">${I.swap} ${ex.isVariant ? "Usar original" : "Cambiar ejercicio"}</button>` : ""}
         </div>
 
-        <div class="ejec collapse" data-ejecbox="${ex.id}">${howToHtml(ex)}</div>
-        <div class="ejec err collapse" data-errbox="${ex.id}">${esc(ex.error || "Sin indicaciones.")}</div>
+        <div class="ejec collapse" id="exinfo"></div>
 
         <div class="suggest ${sug.kind === "up" ? "up" : sug.kind === "cap" ? "cap" : ""}">
           <span class="ico">${sug.kind === "up" ? "↑" : sug.kind === "cap" ? "10kg" : sug.kind === "new" ? "•" : "→"}</span>
@@ -932,14 +935,20 @@ function renderStep(day) {
         ${i > 0 ? `<button class="btn btn-ghost" id="prev">Anterior</button>` : `<span></span>`}
         <button class="btn btn-primary" id="next">${i === total - 1 ? "Hecho · Resumen" : "Hecho · Siguiente"}</button>
       </div>
-    </div>
-    <button class="fab" id="opentimer" aria-label="Temporizador">${I.clock}</button>`, "days");
+    </div>`, "days");
 
   bindCommon();
   $("#exitsession").onclick = () => go("#/days");
   document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; render(); window.scrollTo(0, 0); });
-  document.querySelectorAll("[data-ejec]").forEach((b) => b.onclick = () => $(`[data-ejecbox="${b.dataset.ejec}"]`).classList.toggle("open"));
-  document.querySelectorAll("[data-err]").forEach((b) => b.onclick = () => $(`[data-errbox="${b.dataset.err}"]`).classList.toggle("open"));
+  let infoShown = null;
+  const infoPanel = $("#exinfo");
+  const showInfo = (kind) => {
+    if (infoShown === kind) { infoPanel.classList.remove("open"); infoShown = null; }
+    else { infoPanel.innerHTML = kind === "how" ? howToHtml(ex) : esc(ex.error || "Sin indicaciones."); infoPanel.classList.add("open"); infoShown = kind; }
+    document.querySelectorAll("[data-info]").forEach((x) => x.classList.toggle("on", x.dataset.info === infoShown));
+  };
+  document.querySelectorAll("[data-info]").forEach((b) => b.onclick = () => showInfo(b.dataset.info));
+  const zoom = $('[data-zoom]'); if (zoom) zoom.onclick = () => openDemoImage(ex.id, ex.isVariant);
   document.querySelectorAll("[data-fav]").forEach((b) => b.onclick = () => {
     const id = b.dataset.fav; state.favorites[id] = !state.favorites[id]; if (!state.favorites[id]) delete state.favorites[id];
     saveFavorites(); render();
@@ -952,11 +961,6 @@ function renderStep(day) {
     render(); window.scrollTo(0, 0);
   });
   document.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => openTimer(+b.dataset.timer));
-  $("#opentimer").onclick = () => openTimer(restSeconds(ex));
-  // auto-descanso: al anotar una serie, abre y arranca el temporizador con el descanso del ejercicio
-  document.querySelectorAll('.exercise [data-field="reps"]').forEach((inp) => inp.addEventListener("change", () => {
-    if (autoRestOn() && inp.value.trim() !== "") { openTimer(restSeconds(ex)); startTick(); }
-  }));
   const prev = $("#prev"); if (prev) prev.onclick = () => { captureStep(day); draft.idx--; draft.pendingCue = false; render(); window.scrollTo(0, 0); };
   $("#next").onclick = () => {
     captureStep(day);
@@ -996,8 +1000,6 @@ function renderSessionSummary(day) {
         <div class="step-count">Resumen</div>
       </div>
       ${topbar(editing ? "Editar sesión" : "Sesión completa", editing ? "Corrige y actualiza" : "Revisa y guarda")}
-      <label class="date" style="margin-bottom:14px">${I.clock}<input type="date" id="sdate" value="${draft.date}"></label>
-      <div class="sumlist">${rows}</div>
       <div class="checkcard">
         <div class="check-h">¿Cómo te has encontrado? <span>opcional</span></div>
         ${scale("energia", "Energía")}
@@ -1005,8 +1007,12 @@ function renderSessionSummary(day) {
       </div>
       <div class="save-row">
         <button class="btn btn-primary" id="save">${editing ? "Actualizar sesión" : "Guardar sesión"}</button>
-        <p class="save-hint">Toca un ejercicio para editarlo. Lo que dejes sin registrar no se guarda.</p>
+        <p class="save-hint">Lo que dejes sin registrar no se guarda.</p>
       </div>
+      <label class="date" style="margin:4px 0 14px">${I.clock}<input type="date" id="sdate" value="${draft.date}"></label>
+      <div class="divider"><span class="label">Tus registros</span><span class="rule"></span></div>
+      <p class="save-hint" style="margin:0 0 10px">Toca un ejercicio para editarlo.</p>
+      <div class="sumlist">${rows}</div>
     </div>`, "days");
 
   bindCommon();
@@ -1628,7 +1634,7 @@ function renderProgRecap() {
 
 function drawRecapCard(canvas, r) {
   const ctx = canvas.getContext("2d"); const W = 1080, H = 1350;
-  const ESP = "#16130f", SURF = "#1f1a14", AMB = "#f5a623", CREAM = "#f3ece1", MUT = "#9d917d", LINE = "rgba(245,166,35,0.18)";
+  const ESP = "#10141b", SURF = "#1a2130", AMB = "#f5a623", CREAM = "#f3ece1", MUT = "#97a3b6", LINE = "rgba(245,166,35,0.18)";
   const round = (x, y, w, h, rd) => { ctx.beginPath(); ctx.moveTo(x + rd, y); ctx.arcTo(x + w, y, x + w, y + h, rd); ctx.arcTo(x + w, y + h, x, y + h, rd); ctx.arcTo(x, y + h, x, y, rd); ctx.arcTo(x, y, x + w, y, rd); ctx.closePath(); };
   ctx.fillStyle = ESP; ctx.fillRect(0, 0, W, H);
 
@@ -1712,11 +1718,6 @@ function renderPrinciples() {
       <div class="divider"><span class="label">Ajustes</span><span class="rule"></span></div>
 
       <div class="setrow">
-        <div class="set-txt"><b>Auto-descanso</b><span>Abre el temporizador con el descanso del ejercicio al anotar una serie.</span></div>
-        <button class="switch ${autoRestOn() ? "on" : ""}" id="swauto" role="switch" aria-checked="${autoRestOn()}"><i></i></button>
-      </div>
-
-      <div class="setrow">
         <div class="set-txt"><b>Recordatorios</b><span>Aviso los días de entreno (mientras la app esté abierta o en segundo plano reciente).</span></div>
         <button class="switch ${rem.enabled ? "on" : ""}" id="swrem" role="switch" aria-checked="${rem.enabled}"><i></i></button>
       </div>
@@ -1743,9 +1744,6 @@ function renderPrinciples() {
       <p class="save-hint" style="margin-top:18px">Los vídeos abren una búsqueda en YouTube con buenas demostraciones de cada ejercicio.</p>
     </div>`, "principios");
   bindCommon();
-
-  // auto-descanso
-  $("#swauto").onclick = () => { setAutoRest(!autoRestOn()); render(); };
 
   // recordatorios
   $("#swrem").onclick = async () => {
@@ -1836,6 +1834,21 @@ async function deleteAllData() {
     for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("carga")) keys.push(k); }
     keys.forEach((k) => localStorage.removeItem(k));
   } catch (_) {}
+}
+
+// ---------- visor de la demostración a pantalla completa (horizontal) ----------
+function openDemoImage(exId, isVariant) {
+  const imgs = exerciseImages(exId, isVariant); if (!imgs.length) return;
+  const frames = imgs.map((src, k) =>
+    `<img class="fr fr${k}" src="${src}" alt="" onerror="this.style.display='none'">`).join("");
+  const ov = document.createElement("div"); ov.className = "demobox";
+  ov.innerHTML = `<div class="demobox-rot"><div class="photo demo big">${frames}</div></div>
+    <button class="demobox-close" aria-label="Cerrar">×</button>`;
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  ov.onclick = close;
+  document.addEventListener("keydown", onKey);
+  $(".frame").appendChild(ov);
 }
 
 // ---------- temporizador ----------

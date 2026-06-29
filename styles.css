@@ -6,20 +6,20 @@
    ========================================================= */
 
 :root {
-  --bg: #16130f;
-  --bg-2: #1b1712;
-  --surface: #221d17;
-  --surface-2: #2c2620;
-  --line: rgba(244, 238, 230, 0.09);
-  --line-strong: rgba(244, 238, 230, 0.16);
+  --bg: #10141b;
+  --bg-2: #141923;
+  --surface: #1a2130;
+  --surface-2: #232c3d;
+  --line: rgba(214, 226, 245, 0.09);
+  --line-strong: rgba(214, 226, 245, 0.16);
 
-  --ink: #f4eee6;
-  --muted: #a4978a;
-  --faint: #6f655b;
+  --ink: #eef2f8;
+  --muted: #97a3b6;
+  --faint: #5f6b7e;
 
   --accent: #f5a623;       /* ámbar: esfuerzo, carga */
   --accent-strong: #ff7a1a;
-  --accent-ink: #16130f;   /* texto sobre ámbar */
+  --accent-ink: #10141b;   /* texto sobre ámbar */
   --ok: #6fc28a;           /* progreso conseguido */
   --ok-dim: rgba(111, 194, 138, 0.16);
   --warn: #e8b04b;
@@ -444,7 +444,7 @@ a { color: inherit; }
 .fab:active { transform: scale(0.95); }
 
 .sheet-back {
-  position: fixed; inset: 0; z-index: 60; background: rgba(8,6,4,0.6);
+  position: fixed; inset: 0; z-index: 60; background: rgba(8,11,16,0.6);
   display: flex; align-items: flex-end; justify-content: center;
   animation: fade .2s ease;
 }
@@ -834,7 +834,7 @@ a { color: inherit; }
 .photo-thumb:active img { transform: scale(.97); }
 .pt-date { position: absolute; left: 0; right: 0; bottom: 0; padding: 5px 6px 4px; font-family: var(--mono); font-size: 9px; color: #fff;
   background: linear-gradient(transparent, rgba(0,0,0,0.65)); text-align: left; }
-.lightbox { position: fixed; inset: 0; z-index: 200; background: rgba(8,6,4,0.94); display: flex; flex-direction: column; }
+.lightbox { position: fixed; inset: 0; z-index: 200; background: rgba(8,11,16,0.94); display: flex; flex-direction: column; }
 .lb-top { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 6px; }
 .lb-date { font-family: var(--mono); font-size: 13px; color: #f3ece1; }
 .lb-close { background: none; border: none; color: #f3ece1; font-size: 30px; line-height: 1; cursor: pointer; padding: 0 4px; }
@@ -851,3 +851,30 @@ a { color: inherit; }
 
 /* ====== Wordmark en login ====== */
 .brandlogo { height: 56px; width: auto; max-width: 100%; display: block; margin-bottom: 22px; }
+
+/* ====== Cambios de sesión (v34) ====== */
+.ex-name { text-transform: uppercase; }
+.photo.demo[data-zoom] { cursor: pointer; }
+.photo-zoom { position: absolute; bottom: 8px; left: 8px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45); color: #fff; border-radius: 8px; font-size: 14px; pointer-events: none; }
+.chip.on { border-color: var(--accent); color: var(--accent); background: rgba(245,166,35,0.12); }
+.swap-note { margin: 2px 0 10px; }
+
+/* visor de la demostración a pantalla completa (horizontal) */
+.demobox { position: fixed; inset: 0; z-index: 220; background: #000; display: flex; align-items: center; justify-content: center; }
+.demobox-rot { width: 100vh; height: 100vw; transform: rotate(90deg); position: relative; }
+.photo.demo.big { width: 100%; height: 100%; border-radius: 0; background: #000; }
+.photo.demo.big .fr { object-fit: contain; }
+.demobox-close { position: fixed; top: 14px; right: 16px; z-index: 2; width: 40px; height: 40px; border-radius: 99px;
+  background: rgba(255,255,255,0.16); color: #fff; border: none; font-size: 24px; line-height: 1; cursor: pointer; }
+
+/* celebración de fin de sesión */
+.celebrate { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  text-align: center; padding: 40px; cursor: pointer;
+  background: radial-gradient(120% 80% at 50% 30%, rgba(245,166,35,0.16), transparent 60%), var(--bg); }
+.celebrate-emoji { font-size: 96px; line-height: 1; animation: celebpop .6s cubic-bezier(.2,.9,.3,1.4) both, celebfloat 2.2s ease-in-out .6s infinite; }
+.celebrate-title { font-family: var(--display); font-weight: 900; font-size: 34px; color: var(--accent); animation: celebrise .5s ease both .15s; }
+.celebrate-sub { font-size: 17px; color: var(--ink); animation: celebrise .5s ease both .3s; }
+@keyframes celebpop { from { transform: scale(.3); opacity: 0; } }
+@keyframes celebfloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes celebrise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
