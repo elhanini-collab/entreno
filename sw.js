@@ -1,7 +1,7 @@
 // Service worker mínimo. Cachea solo los archivos estáticos propios para que la
 // app abra rápido y funcione sin conexión a nivel de interfaz. Nunca cachea el
 // SDK de Firebase ni las peticiones a Firestore/Auth (esas van siempre a la red).
-const CACHE = "carga-v24";
+const CACHE = "carga-v25";
 const ASSETS = [
   "./",
   "./index.html",

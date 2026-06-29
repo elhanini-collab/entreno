@@ -212,7 +212,7 @@ function muscleIconSrc(ex) {
 
 const TOKEN_GROUP = {
   chest: "Pecho",
-  lats: "Espalda", "middle back": "Espalda", "lower back": "Espalda",
+  lats: "Espalda", "middle back": "Espalda", "lower back": "Espalda", traps: "Espalda",
   shoulders: "Hombros",
   biceps: "Bíceps", forearms: "Antebrazo", triceps: "Tríceps",
   quadriceps: "Cuádriceps", hamstrings: "Femoral", glutes: "Glúteo", calves: "Gemelos",
@@ -641,7 +641,7 @@ function renderLogin() {
   root.innerHTML = `
     <div class="login">
       <div class="login-hero">
-        <div class="brandrow">${LOGO_MARK}<span class="brandname">Otra Repe</span></div>
+        <img class="brandlogo" src="brand-lockup.png" alt="Otra Repe · una repe más" width="700" height="313">
         <div class="login-kicker">Torso · Pierna · 4 días</div>
         <h1 class="login-title">Levanta.<br>Anota.<br><em>Progresa.</em></h1>
         <p class="login-lead">Tu rutina de hipertrofia y todo tu seguimiento, en el bolsillo. Doble progresión calculada por ti.</p>
