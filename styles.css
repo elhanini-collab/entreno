@@ -635,13 +635,24 @@ a { color: inherit; }
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--accent); animation: cuein 0.4s ease both;
 }
-.cue-text {
-  font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1.22;
-  color: var(--ink); max-width: 17ch; animation: cuein 0.5s ease both 0.05s;
-}
+.cue-done { display: flex; flex-direction: column; align-items: center; gap: 8px; animation: cuein 0.5s ease both; }
+.cue-check { width: 46px; height: 46px; border-radius: 99px; background: var(--ok-dim); color: var(--ok);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; }
+.cue-done-name { font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1.2; color: var(--ink);
+  max-width: 17ch; text-transform: uppercase; }
+.cue-done-sets { font-family: var(--mono); font-size: 16px; color: var(--accent); }
+.cue-done-sets.muted { color: var(--faint); }
+.cue-badge { margin-top: 4px; font-family: var(--mono); font-size: 13px; color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 99px; padding: 6px 12px; }
+.cue-badge.pr { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.cue-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; margin-top: 8px;
+  animation: cuein 0.5s ease both 0.1s; }
+.cue-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cue-stat b { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--ink); }
+.cue-stat span { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .cue-hint { font-family: var(--mono); font-size: 11px; color: var(--faint); animation: cuein 0.5s ease both 0.2s; }
 .cue-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--surface-2); }
-.cue-bar-fill { height: 100%; background: var(--accent); transform-origin: left; animation: cuebar 7s linear forwards; }
+.cue-bar-fill { height: 100%; background: var(--accent); transform-origin: left; animation: cuebar 10s linear forwards; }
 @keyframes cuebar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes cuein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 

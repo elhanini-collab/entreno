@@ -752,25 +752,66 @@ function renderSession(dayId) {
     if (!draft.editingId && !draft.celebrated) return renderCelebrate(day);
     return renderSessionSummary(day);
   }
-  if (draft.pendingCue) return renderCue(day);
+  if (draft.pendingCue) {
+    if (draft.idx === 0) draft.pendingCue = false;   // sin transición antes del primero
+    else return renderCue(day);
+  }
   renderStep(day);
 }
 
-// pantalla previa: pista del ejercicio que viene (a pantalla completa, ~7 s)
+// pantalla de transición tras un ejercicio: lo que acabas de hacer + momentum (~10 s)
 function renderCue(day) {
-  const ex = day.exercises[draft.idx];
-  const list = (ex.cues && ex.cues.length) ? ex.cues : ["Ahora toca " + ex.name + "."];
-  const text = list[Math.floor(Math.random() * list.length)];
+  const prevBase = day.exercises[draft.idx - 1];
+  const prev = resolveExercise(prevBase);
+  const e = draft.entries[prev.id];
+  const hasData = e && entryHasData(e);
+
+  // logro del ejercicio recién terminado (vs histórico)
+  let badge = "";
+  if (hasData) {
+    const b = bestFor(prev.id);
+    const reps = entryReps(e), rm = reps.length ? Math.max(...reps) : 0;
+    const w = workWeight(e), vol = entryVolume(e);
+    const hadBest = !!(b.weight || b.volume || b.repsMax);
+    const isPR = prev.unit === "seg" ? rm > (b.repsMax || 0)
+      : ((w != null && w > (b.weight || 0)) || vol > (b.volume || 0));
+    if (isPR && hadBest) badge = `<div class="cue-badge pr">🎉 ¡Nuevo récord!</div>`;
+    else {
+      const last = lastEntryFor(prev.id);
+      const lw = last ? workWeight(last.entry) : null;
+      if (w != null && lw != null && w > lw) badge = `<div class="cue-badge">↑ +${(w - lw)} kg respecto a la última</div>`;
+    }
+  }
+
+  // momentum de la sesión hasta ahora
+  let done = 0, sets = 0, vol = 0;
+  for (const base of day.exercises) {
+    const x = resolveExercise(base), en = draft.entries[x.id];
+    if (en && entryHasData(en)) { done++; sets += entryReps(en).length; vol += entryVolume(en); }
+  }
+  const elapsed = draft.startedAt ? Math.round((Date.now() - draft.startedAt) / 1000) : 0;
+  const kg = Math.round(vol).toLocaleString("es-ES");
+
   root.innerHTML = `
     <div class="cue" id="cue">
       <img class="cue-logo" src="brand-lockup.png" alt="Otra Repe">
-      <div class="cue-eyebrow">Siguiente · ${draft.idx + 1}/${day.exercises.length}</div>
-      <div class="cue-text">${esc(text)}</div>
+      <div class="cue-done">
+        <div class="cue-check">✓</div>
+        <div class="cue-done-name">${esc(prev.name)}</div>
+        <div class="cue-done-sets ${hasData ? "" : "muted"}">${hasData ? esc(formatSets(prev, e)) : "sin registrar"}</div>
+        ${badge}
+      </div>
+      <div class="cue-stats">
+        <div class="cue-stat"><b>${done}/${day.exercises.length}</b><span>ejercicios</span></div>
+        <div class="cue-stat"><b>${sets}</b><span>series</span></div>
+        ${vol > 0 ? `<div class="cue-stat"><b>${kg}</b><span>kg movidos</span></div>` : ""}
+        <div class="cue-stat"><b>${fmtClock(elapsed)}</b><span>tiempo</span></div>
+      </div>
       <div class="cue-hint">toca para continuar</div>
       <div class="cue-bar"><div class="cue-bar-fill"></div></div>
     </div>`;
   const proceed = () => { if (!draft || !draft.pendingCue) return; draft.pendingCue = false; renderStep(day); window.scrollTo(0, 0); };
-  const t = setTimeout(proceed, 7000);
+  const t = setTimeout(proceed, 10000);
   $("#cue").onclick = () => { clearTimeout(t); proceed(); };
 }
 
