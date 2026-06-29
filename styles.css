@@ -630,6 +630,7 @@ a { color: inherit; }
   padding: 48px 30px; cursor: pointer;
   background: radial-gradient(120% 80% at 50% 25%, rgba(245,166,35,0.10), transparent 60%), var(--bg);
 }
+.cue-logo { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); width: 150px; max-width: 52vw; height: auto; }
 .cue-eyebrow {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--accent); animation: cuein 0.4s ease both;

@@ -635,18 +635,17 @@ function renderSetupNeeded() {
     </div>`;
 }
 
-const LOGO_MARK = `<svg class="logomark" viewBox="0 0 44 44" width="40" height="40" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="11" fill="#f5a623"/><g fill="#16130f"><rect x="9.8" y="20.3" width="10.8" height="3.4" rx="1.7"/><rect x="13.5" y="16.6" width="3.4" height="10.8" rx="1.7"/><rect x="28.5" y="13.8" width="3.4" height="16.4" rx="1.7"/><rect x="26" y="26.8" width="8.4" height="3.4" rx="1.7"/></g><line x1="25.2" y1="19.8" x2="30.2" y2="13.8" stroke="#16130f" stroke-width="3.4" stroke-linecap="round"/></svg>`;
 
 function renderLogin() {
   root.innerHTML = `
     <div class="login">
       <div class="login-hero">
-        <img class="brandlogo" src="brand-lockup.png" alt="Otra Repe · una repe más" width="700" height="313">
+        <img class="brandlogo" src="brand-lockup.png" alt="Otra Repe · una repe más" width="1796" height="598">
         <div class="login-kicker">Torso · Pierna · 4 días</div>
         <h1 class="login-title">Levanta.<br>Anota.<br><em>Progresa.</em></h1>
         <p class="login-lead">Tu rutina de hipertrofia y todo tu seguimiento, en el bolsillo. Doble progresión calculada por ti.</p>
         <div class="login-meta">
-          <span><b>24</b> ejercicios · <b>4</b> sesiones</span>
+          <span><b>25</b> ejercicios · <b>4</b> sesiones</span>
           <span>Sincronizado con tu cuenta</span>
         </div>
       </div>
@@ -775,6 +774,7 @@ function renderCue(day) {
   const text = list[Math.floor(Math.random() * list.length)];
   root.innerHTML = `
     <div class="cue" id="cue">
+      <img class="cue-logo" src="brand-lockup.png" alt="Otra Repe">
       <div class="cue-eyebrow">Siguiente · ${draft.idx + 1}/${day.exercises.length}</div>
       <div class="cue-text">${esc(text)}</div>
       <div class="cue-hint">toca para continuar</div>
