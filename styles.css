@@ -64,10 +64,7 @@ a { color: inherit; }
   min-height: 100dvh; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 20px;
 }
-.boot-mark {
-  font-family: var(--display); font-weight: 900; letter-spacing: 0.22em;
-  font-size: 28px; color: var(--accent);
-}
+.boot-logo { width: 210px; max-width: 64vw; height: auto; display: block; }
 .boot-bar { width: 140px; height: 4px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
 .boot-bar span {
   display: block; height: 100%; width: 40%; background: var(--accent);
