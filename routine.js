@@ -2738,16 +2738,16 @@ export const EXERCISE_MEDIA = {
  "press_banca_con_mancuernas": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bench_Press/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bench_Press/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bench_Press/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bench_Press/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pushups/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Pushups/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Pushups/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Pushups/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2756,16 +2756,16 @@ export const EXERCISE_MEDIA = {
  "remo_a_una_mano_con_mancuerna": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/One-Arm_Dumbbell_Row/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/One-Arm_Dumbbell_Row/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Two-Dumbbell_Row/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent_Over_Two-Dumbbell_Row/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent_Over_Two-Dumbbell_Row/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent_Over_Two-Dumbbell_Row/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2774,16 +2774,16 @@ export const EXERCISE_MEDIA = {
  "press_militar_sentado_con_mancuernas": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Shoulder_Press/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Shoulder_Press/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Shoulder_Press/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Shoulder_Press/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arnold_Dumbbell_Press/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Arnold_Dumbbell_Press/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Arnold_Dumbbell_Press/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Arnold_Dumbbell_Press/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2792,16 +2792,16 @@ export const EXERCISE_MEDIA = {
  "aperturas_en_banco_inclinado": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Flyes/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Flyes/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Flyes/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Flyes/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Flyes/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Flyes/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Flyes/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Flyes/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2810,16 +2810,16 @@ export const EXERCISE_MEDIA = {
  "curl_de_biceps": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bicep_Curl/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Bicep_Curl/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bicep_Curl/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Bicep_Curl/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Concentration_Curls/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Concentration_Curls/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Concentration_Curls/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Concentration_Curls/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2828,16 +2828,16 @@ export const EXERCISE_MEDIA = {
  "extension_de_triceps_sobre_la_cabeza": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Dumbbell_Triceps_Extension/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Standing_Dumbbell_Triceps_Extension/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Dumbbell_Triceps_Extension/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Dumbbell_Triceps_Extension/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tricep_Dumbbell_Kickback/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Tricep_Dumbbell_Kickback/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Tricep_Dumbbell_Kickback/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Tricep_Dumbbell_Kickback/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2846,16 +2846,16 @@ export const EXERCISE_MEDIA = {
  "pajaros_con_mancuernas": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Flyes/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Flyes/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Reverse_Flyes/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Reverse_Flyes/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Face_Pull/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Face_Pull/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Face_Pull/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2864,16 +2864,16 @@ export const EXERCISE_MEDIA = {
  "sentadilla_goblet": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2882,16 +2882,16 @@ export const EXERCISE_MEDIA = {
  "peso_muerto_rumano_con_mancuernas": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Dumbbell_Deadlift/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Dumbbell_Deadlift/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stiff-Legged_Dumbbell_Deadlift/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stiff-Legged_Dumbbell_Deadlift/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Good_Mornings/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Good_Mornings/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Good_Mornings/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Good_Mornings/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2907,8 +2907,8 @@ export const EXERCISE_MEDIA = {
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Rear_Lunge/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Rear_Lunge/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Rear_Lunge/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Rear_Lunge/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2917,16 +2917,16 @@ export const EXERCISE_MEDIA = {
  "puente_de_gluteo_con_mancuerna": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Butt_Lift_Bridge/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Butt_Lift_Bridge/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Butt_Lift_Bridge/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Butt_Lift_Bridge/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Hip_Thrust/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Barbell_Hip_Thrust/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Barbell_Hip_Thrust/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Barbell_Hip_Thrust/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2935,16 +2935,16 @@ export const EXERCISE_MEDIA = {
  "elevacion_de_gemelo_de_pie": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2953,8 +2953,8 @@ export const EXERCISE_MEDIA = {
  "plancha_frontal": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Plank/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Plank/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Plank/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Plank/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2968,16 +2968,16 @@ export const EXERCISE_MEDIA = {
  "press_inclinado_con_mancuernas": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Press/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Incline_Dumbbell_Press/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Press/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Incline_Dumbbell_Press/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Push-Up/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Decline_Push-Up/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Decline_Push-Up/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Decline_Push-Up/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -2986,16 +2986,16 @@ export const EXERCISE_MEDIA = {
  "remo_con_apoyo_de_pecho": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Incline_Row/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Incline_Row/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Incline_Row/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Incline_Row/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/One-Arm_Dumbbell_Row/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/One-Arm_Dumbbell_Row/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/One-Arm_Dumbbell_Row/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3004,16 +3004,16 @@ export const EXERCISE_MEDIA = {
  "elevaciones_laterales": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Lateral_Raise/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Lateral_Raise/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Lateral_Raise/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Side_Lateral_Raise/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3022,16 +3022,16 @@ export const EXERCISE_MEDIA = {
  "pullover_con_mancuerna": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent-Arm_Dumbbell_Pullover/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent-Arm_Dumbbell_Pullover/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent-Arm_Dumbbell_Pullover/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent-Arm_Dumbbell_Pullover/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent-Arm_Dumbbell_Pullover/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bent-Arm_Dumbbell_Pullover/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent-Arm_Dumbbell_Pullover/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bent-Arm_Dumbbell_Pullover/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3040,16 +3040,16 @@ export const EXERCISE_MEDIA = {
  "curl_martillo": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Alternate_Hammer_Curl/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Alternate_Hammer_Curl/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Alternate_Hammer_Curl/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Alternate_Hammer_Curl/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Alternate_Bicep_Curl/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Alternate_Bicep_Curl/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Alternate_Bicep_Curl/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Alternate_Bicep_Curl/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3058,16 +3058,16 @@ export const EXERCISE_MEDIA = {
  "press_cerrado_en_suelo": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Floor_Press/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Floor_Press/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Floor_Press/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Floor_Press/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bench_Dips/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Bench_Dips/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bench_Dips/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Bench_Dips/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3076,16 +3076,16 @@ export const EXERCISE_MEDIA = {
  "zancada_inversa_con_mancuernas": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Rear_Lunge/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Rear_Lunge/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Rear_Lunge/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Rear_Lunge/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Lunges/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Lunges/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Lunges/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Lunges/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3101,8 +3101,8 @@ export const EXERCISE_MEDIA = {
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Dumbbell_Deadlift/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Stiff-Legged_Dumbbell_Deadlift/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stiff-Legged_Dumbbell_Deadlift/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stiff-Legged_Dumbbell_Deadlift/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3111,16 +3111,16 @@ export const EXERCISE_MEDIA = {
  "sentadilla_goblet_con_tempo": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Squat/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3129,8 +3129,8 @@ export const EXERCISE_MEDIA = {
  "step_up_al_banco": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Step_Ups/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Step_Ups/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Step_Ups/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Step_Ups/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3146,16 +3146,16 @@ export const EXERCISE_MEDIA = {
  "elevacion_de_gemelo_sentado": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Seated_One-Leg_Calf_Raise/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Dumbbell_Seated_One-Leg_Calf_Raise/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Seated_One-Leg_Calf_Raise/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Seated_One-Leg_Calf_Raise/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Calf_Raise_On_A_Dumbbell/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
@@ -3164,16 +3164,16 @@ export const EXERCISE_MEDIA = {
  "elevacion_de_piernas_tumbado": {
   "main": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flat_Bench_Lying_Leg_Raise/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Flat_Bench_Lying_Leg_Raise/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Flat_Bench_Lying_Leg_Raise/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Flat_Bench_Lying_Leg_Raise/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
   },
   "variant": {
    "urls": [
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Crunch/0.jpg",
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/Reverse_Crunch/1.jpg"
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Reverse_Crunch/0.jpg",
+    "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Reverse_Crunch/1.jpg"
    ],
    "source": "free-exercise-db",
    "ok": true
