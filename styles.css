@@ -889,3 +889,13 @@ a { color: inherit; }
 @keyframes celebpop { from { transform: scale(.3); opacity: 0; } }
 @keyframes celebfloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 @keyframes celebrise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* ====== Reanudar sesión (autoguardado) ====== */
+.resume { display: flex; flex-direction: column; gap: 12px; padding: 16px; margin-bottom: 14px;
+  background: var(--surface); border: 1px solid var(--accent); border-radius: var(--r-lg);
+  box-shadow: 0 0 0 3px rgba(245,166,35,0.10); }
+.resume-txt { display: flex; flex-direction: column; gap: 2px; }
+.resume-txt b { font-family: var(--display); font-weight: 800; font-size: 16px; color: var(--ink); }
+.resume-txt span { font-size: 13px; color: var(--muted); }
+.resume-actions { display: flex; align-items: center; gap: 14px; }
+.resume-actions .btn { flex: 1; }

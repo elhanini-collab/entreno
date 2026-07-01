@@ -675,9 +675,19 @@ function renderDays() {
         <div class="last ${last ? "" : "none"}">${last ? "● " + last : "○ sin registros"}</div>
       </button>`;
   }).join("");
+  const rday = (draft && !draft.editingId && (draftFilled(draft) > 0 || draft.idx > 0)) ? DAYS.find((d) => d.id === draft.dayId) : null;
+  const resume = rday ? `
+      <div class="resume">
+        <div class="resume-txt"><b>Sesión sin terminar</b><span>${esc(rday.name)} · ${draftFilled(draft)}/${rday.exercises.length} ejercicios con datos</span></div>
+        <div class="resume-actions">
+          <button class="btn btn-primary" id="resumeGo">Continuar</button>
+          <button class="linkbtn" id="resumeDrop">Descartar</button>
+        </div>
+      </div>` : "";
   shell(`
     <div class="screen">
       ${topbar("Elige tu día", "Hoy entrenas")}
+      ${resume}
       ${panel}
       <p class="weeknote">Semana del ${fmtDate(wk.start)} al ${fmtDate(wk.end)} · marcados los que ya hiciste</p>
       <div class="daylist">${cards}</div>
@@ -686,6 +696,10 @@ function renderDays() {
     </div>`, "days");
   bindCommon();
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+  const rg = $("#resumeGo"); if (rg) rg.onclick = () => go("#/session/" + draft.dayId);
+  const rd = $("#resumeDrop"); if (rd) rd.onclick = () => {
+    if (confirm("¿Descartar la sesión sin terminar? Se perderá lo que habías introducido.")) { draft = null; clearDraft(); render(); }
+  };
 }
 
 // ---------- vista previa del día (antes de empezar) ----------
@@ -727,6 +741,21 @@ function renderDayPreview(dayId) {
 // ---------- sesión: un ejercicio por pantalla ----------
 let draft = null; // { dayId, date, idx, entries: { exId: {peso, reps:[], notas} } }
 
+// --- autoguardado local del borrador de sesión (sobrevive a recargas/salidas) ---
+const DRAFT_KEY = "carga_draft";
+function saveDraft() {
+  try { if (draft && !draft.editingId) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
+}
+function loadDraft() {
+  try { const s = localStorage.getItem(DRAFT_KEY); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+}
+function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (_) {} }
+// nº de ejercicios con algún dato en el borrador
+function draftFilled(d) {
+  if (!d || !d.entries) return 0;
+  return Object.values(d.entries).filter((e) => e && (num(e.peso) != null || (Array.isArray(e.reps) && e.reps.some((r) => num(r) != null)) || (e.notas || "").trim())).length;
+}
+
 function initDraft(dayId) { draft = { dayId, date: todayISO(), idx: 0, entries: {}, pendingCue: false, startedAt: Date.now() }; }
 
 function captureStep(day) {
@@ -742,6 +771,7 @@ function captureStep(day) {
   });
   const notasEl = card.querySelector('[data-field="notas"]');
   draft.entries[ex.id] = { peso: peso === "" ? null : Number(peso), reps, notas: notasEl ? notasEl.value.trim() : "" };
+  saveDraft();
 }
 
 function renderSession(dayId) {
@@ -823,7 +853,7 @@ function renderCelebrate(day) {
       <div class="celebrate-title">¡Enhorabuena!</div>
       <div class="celebrate-sub">Otra sesión más completada</div>
     </div>`;
-  const done = () => { if (!draft) return; draft.celebrated = true; renderSessionSummary(day); window.scrollTo(0, 0); };
+  const done = () => { if (!draft) return; draft.celebrated = true; saveDraft(); renderSessionSummary(day); window.scrollTo(0, 0); };
   const t = setTimeout(done, 3000);
   $("#celebrate").onclick = () => { clearTimeout(t); done(); };
 }
@@ -980,7 +1010,9 @@ function renderStep(day) {
 
   bindCommon();
   $("#exitsession").onclick = () => go("#/days");
-  document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; render(); window.scrollTo(0, 0); });
+  // autoguardado: vuelca cada dato al borrador local en el momento en que se teclea
+  document.querySelectorAll('.exercise [data-field]').forEach((inp) => inp.addEventListener("input", () => captureStep(day)));
+  document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; saveDraft(); render(); window.scrollTo(0, 0); });
   let infoShown = null;
   const infoPanel = $("#exinfo");
   const showInfo = (kind) => {
@@ -1002,12 +1034,13 @@ function renderStep(day) {
     render(); window.scrollTo(0, 0);
   });
   document.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => openTimer(+b.dataset.timer));
-  const prev = $("#prev"); if (prev) prev.onclick = () => { captureStep(day); draft.idx--; draft.pendingCue = false; render(); window.scrollTo(0, 0); };
+  const prev = $("#prev"); if (prev) prev.onclick = () => { captureStep(day); draft.idx--; draft.pendingCue = false; saveDraft(); render(); window.scrollTo(0, 0); };
   $("#next").onclick = () => {
     captureStep(day);
     const wasLast = draft.idx === day.exercises.length - 1;
     draft.idx++;
     draft.pendingCue = !wasLast;   // sin pista antes del resumen
+    saveDraft();
     render(); window.scrollTo(0, 0);
   };
   startSessionClock();
@@ -1063,8 +1096,9 @@ function renderSessionSummary(day) {
     const key = b.dataset.check, val = +b.dataset.val;
     draft.check[key] = draft.check[key] === val ? null : val;
     document.querySelectorAll(`[data-check="${key}"]`).forEach((x) => x.classList.toggle("on", +x.dataset.val === draft.check[key]));
+    saveDraft();
   });
-  $("#sdate").onchange = (e) => { draft.date = e.target.value || todayISO(); };
+  $("#sdate").onchange = (e) => { draft.date = e.target.value || todayISO(); saveDraft(); };
   $("#save").onclick = () => saveSession(day);
   startSessionClock();
 }
@@ -1112,6 +1146,7 @@ async function saveSession(day) {
     state.sessions.sort((a, b) => (a.date < b.date ? 1 : -1));
     stopSessionClock();
     draft = null;
+    clearDraft();
     if (prNames.length) {
       toast(`🎉 ¡Récord en ${prNames.slice(0, 2).join(" y ")}${prNames.length > 2 ? "…" : ""}!`);
     } else {
@@ -2010,6 +2045,7 @@ async function boot() {
     state.user = user || null;
     if (user) {
       await loadSessions();
+      if (!draft) { const d = loadDraft(); if (d && DAYS.some((x) => x.id === d.dayId)) draft = d; else clearDraft(); }
       loadProgress();      // en segundo plano
       applyReminders();
       if (!location.hash) go("#/days"); else render();
