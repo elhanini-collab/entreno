@@ -1,6 +1,6 @@
-// routine.js — generado desde rutina_app.json v3.0 (2026-06-29)
+// routine.js — generado desde rutina_app.json v3.1 (2026-09-09)
 
-export const DUMBBELL_CAP_KG = 10;
+export const DUMBBELL_CAP_KG = 14;
 
 export const DAYS = [
  {
@@ -22,8 +22,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 7,
-    "rmInicial": 9.8,
+    "pesoInicial": 9,
+    "rmInicial": 12.6,
     "video": "https://www.youtube.com/results?search_query=press+banca+con+mancuernas+tecnica+correcta",
     "mainMuscle": "Pecho",
     "secMuscles": [
@@ -135,8 +135,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 8,
-    "rmInicial": 11.2,
+    "pesoInicial": 10,
+    "rmInicial": 14.0,
     "video": "https://www.youtube.com/results?search_query=remo+a+una+mano+con+mancuerna+tecnica",
     "mainMuscle": "Espalda media",
     "secMuscles": [
@@ -191,8 +191,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "2-0-1",
-     "pesoInicial": 8,
-     "rmInicial": 11.2,
+     "pesoInicial": 10,
+     "rmInicial": 14.0,
      "video": "https://www.youtube.com/results?search_query=remo+con+mancuernas+inclinado+tecnica",
      "mainMuscle": "Espalda media / Dorsales",
      "secMuscles": [
@@ -249,8 +249,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 8.4,
+    "pesoInicial": 8,
+    "rmInicial": 11.2,
     "video": "https://www.youtube.com/results?search_query=press+militar+sentado+mancuernas+tecnica",
     "mainMuscle": "Hombros",
     "secMuscles": [
@@ -300,8 +300,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 120,
      "tempo": "2-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 8.4,
+     "pesoInicial": 8,
+     "rmInicial": 11.2,
      "video": "https://www.youtube.com/results?search_query=press+arnold+mancuernas+tecnica",
      "mainMuscle": "Hombros",
      "secMuscles": [
@@ -353,8 +353,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-0-1",
-    "pesoInicial": 5,
-    "rmInicial": 7.5,
+    "pesoInicial": 6,
+    "rmInicial": 9.0,
     "video": "https://www.youtube.com/results?search_query=aperturas+banco+inclinado+mancuernas",
     "mainMuscle": "Pecho",
     "secMuscles": [
@@ -394,8 +394,8 @@ export const DAYS = [
     "error": "Cuidado con bajar de más o flexionar mucho el codo; arco amplio con codos casi fijos.",
     "variant": {
      "name": "Aperturas planas con mancuernas",
-     "scheme": "2 × 12-15",
-     "sets": 2,
+     "scheme": "3 × 12-15",
+     "sets": 3,
      "repLow": 12,
      "repHigh": 15,
      "unit": "reps",
@@ -404,8 +404,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 120,
      "tempo": "2-0-1",
-     "pesoInicial": 5,
-     "rmInicial": 7.5,
+     "pesoInicial": 6,
+     "rmInicial": 9.0,
      "video": "https://www.youtube.com/results?search_query=aperturas+con+mancuernas+banco+plano",
      "mainMuscle": "Pecho",
      "secMuscles": [
@@ -421,7 +421,7 @@ export const DAYS = [
       "chest": 1.0,
       "shoulders": 0.5
      },
-     "durMin": 4,
+     "durMin": 6,
      "tipo": "aislamiento",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -457,8 +457,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 9.0,
+    "pesoInicial": 7,
+    "rmInicial": 10.5,
     "video": "https://www.youtube.com/results?search_query=curl+de+biceps+con+mancuernas+tecnica",
     "mainMuscle": "Bíceps",
     "secMuscles": [
@@ -498,8 +498,8 @@ export const DAYS = [
     "error": "Cuidado con balancear el cuerpo para impulsar; codos pegados y solo mueve el antebrazo.",
     "variant": {
      "name": "Curl concentrado",
-     "scheme": "2 × 12-15 (lado)",
-     "sets": 2,
+     "scheme": "4 × 12-15 (lado)",
+     "sets": 4,
      "repLow": 12,
      "repHigh": 15,
      "unit": "reps",
@@ -508,8 +508,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 120,
      "tempo": "2-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 9.0,
+     "pesoInicial": 7,
+     "rmInicial": 10.5,
      "video": "https://www.youtube.com/results?search_query=curl+concentrado+mancuerna+tecnica",
      "mainMuscle": "Bíceps",
      "secMuscles": [
@@ -525,7 +525,7 @@ export const DAYS = [
       "biceps": 1.0,
       "forearms": 0.5
      },
-     "durMin": 4,
+     "durMin": 8,
      "tipo": "aislamiento",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -561,8 +561,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 9.0,
+    "pesoInicial": 9,
+    "rmInicial": 13.5,
     "video": "https://www.youtube.com/results?search_query=extension+triceps+sobre+la+cabeza+mancuerna",
     "mainMuscle": "Tríceps",
     "secMuscles": [],
@@ -606,8 +606,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 120,
      "tempo": "2-0-1",
-     "pesoInicial": 5,
-     "rmInicial": 7.5,
+     "pesoInicial": 6,
+     "rmInicial": 9.0,
      "video": "https://www.youtube.com/results?search_query=patada+de+triceps+con+mancuerna+tecnica",
      "mainMuscle": "Tríceps",
      "secMuscles": [],
@@ -654,8 +654,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 60,
     "tempo": "2-0-1",
-    "pesoInicial": 4,
-    "rmInicial": 6.0,
+    "pesoInicial": 5,
+    "rmInicial": 7.5,
     "video": "https://www.youtube.com/results?search_query=pajaros+deltoides+posterior+mancuernas+tecnica",
     "mainMuscle": "Hombros",
     "secMuscles": [
@@ -770,8 +770,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 8,
-    "rmInicial": 12.0,
+    "pesoInicial": 14,
+    "rmInicial": 21.0,
     "video": "https://www.youtube.com/results?search_query=sentadilla+goblet+tecnica+correcta",
     "mainMuscle": "Cuádriceps",
     "secMuscles": [
@@ -830,8 +830,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "2-0-1",
-     "pesoInicial": 8,
-     "rmInicial": 12.0,
+     "pesoInicial": 12,
+     "rmInicial": 18.0,
      "video": "https://www.youtube.com/results?search_query=sentadilla+con+mancuernas+tecnica",
      "mainMuscle": "Cuádriceps",
      "secMuscles": [
@@ -886,8 +886,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "3-0-1",
-    "pesoInicial": 8,
-    "rmInicial": 11.2,
+    "pesoInicial": 12,
+    "rmInicial": 16.8,
     "video": "https://www.youtube.com/results?search_query=peso+muerto+rumano+mancuernas+tecnica",
     "mainMuscle": "Isquios",
     "secMuscles": [
@@ -940,8 +940,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "3-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 8.4,
+     "pesoInicial": 10,
+     "rmInicial": 14.0,
      "video": "https://www.youtube.com/results?search_query=buenos+dias+ejercicio+mancuerna+tecnica",
      "mainMuscle": "Isquios",
      "secMuscles": [
@@ -996,8 +996,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 8.4,
+    "pesoInicial": 10,
+    "rmInicial": 14.0,
     "video": "https://www.youtube.com/results?search_query=sentadilla+bulgara+tecnica",
     "mainMuscle": "Cuádriceps",
     "secMuscles": [
@@ -1051,8 +1051,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "2-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 8.4,
+     "pesoInicial": 10,
+     "rmInicial": 14.0,
      "video": "https://www.youtube.com/results?search_query=zancada+inversa+con+mancuernas+tecnica",
      "mainMuscle": "Cuádriceps",
      "secMuscles": [
@@ -1107,8 +1107,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-1-1",
-    "pesoInicial": 8,
-    "rmInicial": 12.0,
+    "pesoInicial": 14,
+    "rmInicial": 21.0,
     "video": "https://www.youtube.com/results?search_query=puente+de+gluteo+con+mancuerna+hip+thrust+suelo",
     "mainMuscle": "Glúteos",
     "secMuscles": [
@@ -1158,8 +1158,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 120,
      "tempo": "2-1-1",
-     "pesoInicial": 8,
-     "rmInicial": 12.0,
+     "pesoInicial": 14,
+     "rmInicial": 21.0,
      "video": "https://www.youtube.com/results?search_query=hip+thrust+con+mancuerna+banco+tecnica",
      "mainMuscle": "Glúteos",
      "secMuscles": [
@@ -1211,8 +1211,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 60,
     "tempo": "2-1-2",
-    "pesoInicial": 8,
-    "rmInicial": 13.3,
+    "pesoInicial": 12,
+    "rmInicial": 20.0,
     "video": "https://www.youtube.com/results?search_query=elevacion+de+gemelos+de+pie+tecnica",
     "mainMuscle": "Gemelos",
     "secMuscles": [],
@@ -1247,10 +1247,10 @@ export const DAYS = [
     "error": "Cuidado con rebotar y usar poco rango; sube del todo y baja estirando el gemelo.",
     "variant": {
      "name": "Gemelo a una pierna en un escalón",
-     "scheme": "3 × 12-15 (lado)",
-     "sets": 3,
-     "repLow": 12,
-     "repHigh": 15,
+     "scheme": "2 × 15-20 (lado)",
+     "sets": 2,
+     "repLow": 15,
+     "repHigh": 20,
      "unit": "reps",
      "rir": "1",
      "descanso": "1 min",
@@ -1273,7 +1273,7 @@ export const DAYS = [
      "estimulo": {
       "calves": 1.0
      },
-     "durMin": 5,
+     "durMin": 4,
      "tipo": "aislamiento",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -1411,8 +1411,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 8.4,
+    "pesoInicial": 8,
+    "rmInicial": 11.2,
     "video": "https://www.youtube.com/results?search_query=press+inclinado+con+mancuernas+tecnica",
     "mainMuscle": "Pecho",
     "secMuscles": [
@@ -1455,8 +1455,8 @@ export const DAYS = [
     "error": "Cuidado con rebotar abajo o abrir los codos; baja controlado y mantén ~45°.",
     "variant": {
      "name": "Flexiones con pies elevados",
-     "scheme": "3 × 8-15",
-     "sets": 3,
+     "scheme": "4 × 8-15",
+     "sets": 4,
      "repLow": 8,
      "repHigh": 15,
      "unit": "reps",
@@ -1485,7 +1485,7 @@ export const DAYS = [
       "shoulders": 0.5,
       "triceps": 0.5
      },
-     "durMin": 7,
+     "durMin": 10,
      "tipo": "compuesto",
      "tipoCarga": "no_axial",
      "prioridad": "principal",
@@ -1521,8 +1521,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 7,
-    "rmInicial": 9.8,
+    "pesoInicial": 9,
+    "rmInicial": 12.6,
     "video": "https://www.youtube.com/results?search_query=remo+con+apoyo+de+pecho+mancuernas+banco+inclinado",
     "mainMuscle": "Espalda media",
     "secMuscles": [
@@ -1581,8 +1581,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "2-0-1",
-     "pesoInicial": 8,
-     "rmInicial": 11.2,
+     "pesoInicial": 10,
+     "rmInicial": 14.0,
      "video": "https://www.youtube.com/results?search_query=remo+a+una+mano+mancuerna+tecnica",
      "mainMuscle": "Espalda media / Dorsales",
      "secMuscles": [
@@ -1639,8 +1639,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 60,
     "tempo": "2-0-1",
-    "pesoInicial": 4,
-    "rmInicial": 6.7,
+    "pesoInicial": 5,
+    "rmInicial": 8.3,
     "video": "https://www.youtube.com/results?search_query=elevaciones+laterales+hombro+tecnica",
     "mainMuscle": "Hombros",
     "secMuscles": [],
@@ -1675,8 +1675,8 @@ export const DAYS = [
     "error": "Cuidado con usar impulso y pasar del hombro; sube controlado hasta la altura del hombro.",
     "variant": {
      "name": "Elevación lateral con banda",
-     "scheme": "3 × 15-20",
-     "sets": 3,
+     "scheme": "4 × 15-20",
+     "sets": 4,
      "repLow": 15,
      "repHigh": 20,
      "unit": "reps",
@@ -1697,7 +1697,7 @@ export const DAYS = [
      "estimulo": {
       "shoulders": 1.0
      },
-     "durMin": 6,
+     "durMin": 8,
      "tipo": "aislamiento",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -1733,8 +1733,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-1-1",
-    "pesoInicial": 7,
-    "rmInicial": 10.5,
+    "pesoInicial": 9,
+    "rmInicial": 13.5,
     "video": "https://www.youtube.com/results?search_query=pullover+con+mancuerna+tecnica",
     "mainMuscle": "Pecho",
     "secMuscles": [
@@ -1789,8 +1789,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 120,
      "tempo": "2-1-1",
-     "pesoInicial": 7,
-     "rmInicial": 10.5,
+     "pesoInicial": 9,
+     "rmInicial": 13.5,
      "video": "https://www.youtube.com/results?search_query=pullover+con+mancuerna+suelo+tecnica",
      "mainMuscle": "Pecho / Dorsales",
      "secMuscles": [
@@ -1845,8 +1845,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 9.0,
+    "pesoInicial": 7,
+    "rmInicial": 10.5,
     "video": "https://www.youtube.com/results?search_query=curl+martillo+mancuernas+tecnica",
     "mainMuscle": "Bíceps",
     "secMuscles": [
@@ -1886,8 +1886,8 @@ export const DAYS = [
     "error": "Cuidado con balancear el cuerpo; agarre neutro, codos quietos y bajada controlada.",
     "variant": {
      "name": "Curl de bíceps alterno",
-     "scheme": "2 × 12-15",
-     "sets": 2,
+     "scheme": "4 × 12-15",
+     "sets": 4,
      "repLow": 12,
      "repHigh": 15,
      "unit": "reps",
@@ -1896,8 +1896,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 120,
      "tempo": "2-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 9.0,
+     "pesoInicial": 7,
+     "rmInicial": 10.5,
      "video": "https://www.youtube.com/results?search_query=curl+de+biceps+alterno+mancuernas+tecnica",
      "mainMuscle": "Bíceps",
      "secMuscles": [
@@ -1913,7 +1913,7 @@ export const DAYS = [
       "biceps": 1.0,
       "forearms": 0.5
      },
-     "durMin": 4,
+     "durMin": 8,
      "tipo": "aislamiento",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -1948,8 +1948,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 120,
     "tempo": "2-0-1",
-    "pesoInicial": 7,
-    "rmInicial": 10.5,
+    "pesoInicial": 9,
+    "rmInicial": 13.5,
     "video": "https://www.youtube.com/results?search_query=press+cerrado+mancuernas+suelo+triceps",
     "mainMuscle": "Tríceps",
     "secMuscles": [
@@ -2066,8 +2066,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 8.4,
+    "pesoInicial": 10,
+    "rmInicial": 14.0,
     "video": "https://www.youtube.com/results?search_query=zancada+inversa+con+mancuernas+tecnica",
     "mainMuscle": "Cuádriceps",
     "secMuscles": [
@@ -2123,8 +2123,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "2-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 8.4,
+     "pesoInicial": 10,
+     "rmInicial": 14.0,
      "video": "https://www.youtube.com/results?search_query=zancada+frontal+con+mancuernas+tecnica",
      "mainMuscle": "Cuádriceps",
      "secMuscles": [
@@ -2178,8 +2178,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "3-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 8.4,
+    "pesoInicial": 10,
+    "rmInicial": 14.0,
     "video": "https://www.youtube.com/results?search_query=peso+muerto+rumano+a+una+pierna+tecnica",
     "mainMuscle": "Isquios",
     "secMuscles": [
@@ -2233,8 +2233,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "3-0-1",
-     "pesoInicial": 8,
-     "rmInicial": 11.2,
+     "pesoInicial": 12,
+     "rmInicial": 16.8,
      "video": "https://www.youtube.com/results?search_query=peso+muerto+rumano+mancuernas+tecnica",
      "mainMuscle": "Isquios",
      "secMuscles": [
@@ -2289,8 +2289,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "3-1-1",
-    "pesoInicial": 8,
-    "rmInicial": 11.2,
+    "pesoInicial": 12,
+    "rmInicial": 16.8,
     "video": "https://www.youtube.com/results?search_query=sentadilla+goblet+tempo+lento+excentrica",
     "mainMuscle": "Cuádriceps",
     "secMuscles": [
@@ -2348,8 +2348,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "3-1-1",
-     "pesoInicial": 8,
-     "rmInicial": 11.2,
+     "pesoInicial": 12,
+     "rmInicial": 16.8,
      "video": "https://www.youtube.com/results?search_query=sentadilla+con+mancuernas+tempo+lento",
      "mainMuscle": "Cuádriceps",
      "secMuscles": [
@@ -2403,8 +2403,8 @@ export const DAYS = [
     "restMin": 120,
     "restMax": 180,
     "tempo": "2-0-1",
-    "pesoInicial": 6,
-    "rmInicial": 8.4,
+    "pesoInicial": 10,
+    "rmInicial": 14.0,
     "video": "https://www.youtube.com/results?search_query=step+up+al+cajon+con+mancuernas+tecnica",
     "mainMuscle": "Cuádriceps",
     "secMuscles": [
@@ -2461,8 +2461,8 @@ export const DAYS = [
      "restMin": 120,
      "restMax": 180,
      "tempo": "2-0-1",
-     "pesoInicial": 6,
-     "rmInicial": 8.4,
+     "pesoInicial": 10,
+     "rmInicial": 14.0,
      "video": "https://www.youtube.com/results?search_query=sentadilla+bulgara+tecnica",
      "mainMuscle": "Cuádriceps",
      "secMuscles": [
@@ -2516,8 +2516,8 @@ export const DAYS = [
     "restMin": 60,
     "restMax": 60,
     "tempo": "2-1-2",
-    "pesoInicial": 8,
-    "rmInicial": 13.3,
+    "pesoInicial": 12,
+    "rmInicial": 20.0,
     "video": "https://www.youtube.com/results?search_query=elevacion+de+gemelos+sentado+tecnica",
     "mainMuscle": "Gemelos",
     "secMuscles": [],
@@ -2552,8 +2552,8 @@ export const DAYS = [
     "error": "Cuidado con poco rango y rebote; pausa arriba y estira abajo.",
     "variant": {
      "name": "Gemelo de pie con mancuernas",
-     "scheme": "3 × 15-20",
-     "sets": 3,
+     "scheme": "2 × 15-20",
+     "sets": 2,
      "repLow": 15,
      "repHigh": 20,
      "unit": "reps",
@@ -2562,8 +2562,8 @@ export const DAYS = [
      "restMin": 60,
      "restMax": 60,
      "tempo": "2-1-2",
-     "pesoInicial": 8,
-     "rmInicial": 13.3,
+     "pesoInicial": 12,
+     "rmInicial": 20.0,
      "video": "https://www.youtube.com/results?search_query=elevacion+de+gemelos+de+pie+tecnica",
      "mainMuscle": "Gemelos",
      "secMuscles": [
@@ -2578,7 +2578,7 @@ export const DAYS = [
      "estimulo": {
       "calves": 1.0
      },
-     "durMin": 6,
+     "durMin": 4,
      "tipo": "aislamiento",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -2648,8 +2648,8 @@ export const DAYS = [
     "error": "Cuidado con despegar la lumbar y arquear; mantén la zona baja pegada al suelo.",
     "variant": {
      "name": "Crunch inverso",
-     "scheme": "3 × 12-15",
-     "sets": 3,
+     "scheme": "2 × 12-15",
+     "sets": 2,
      "repLow": 12,
      "repHigh": 15,
      "unit": "reps",
@@ -2675,7 +2675,7 @@ export const DAYS = [
       "abdominals": 1.0,
       "hip flexors": 0.5
      },
-     "durMin": 5,
+     "durMin": 3,
      "tipo": "core",
      "tipoCarga": "no_axial",
      "prioridad": "accesorio",
@@ -2710,7 +2710,7 @@ export const PRINCIPLES = [
  },
  {
   "title": "Sobrecarga progresiva (doble progresión)",
-  "body": "Empieza en el extremo bajo del rango con buena técnica. Cuando alcances el extremo alto en todas las series, sube peso. Al llegar a tu tope de 10 kg, progresa con más repeticiones, fase excéntrica más lenta (3-4 s) o versiones a una pierna/un brazo."
+  "body": "Empieza en el extremo bajo del rango con buena técnica. Cuando alcances el extremo alto en todas las series, sube peso. Al llegar a tu tope de 14 kg, progresa con más repeticiones, fase excéntrica más lenta (3-4 s) o versiones a una pierna/un brazo."
  },
  {
   "title": "Esfuerzo (RIR)",
@@ -2722,7 +2722,7 @@ export const PRINCIPLES = [
  },
  {
   "title": "Tempo",
-  "body": "Velocidad de cada fase de la repetición en segundos (excéntrica-pausa-concéntrica). Ej.: 3-1-1 = bajar en 3 s, pausa de 1 s, subir en 1 s. Alargar la bajada sube el estímulo sin tocar el peso: una de tus palancas al toparte con los 10 kg."
+  "body": "Velocidad de cada fase de la repetición en segundos (excéntrica-pausa-concéntrica). Ej.: 3-1-1 = bajar en 3 s, pausa de 1 s, subir en 1 s. Alargar la bajada sube el estímulo sin tocar el peso: una de tus palancas al toparte con los 14 kg."
  },
  {
   "title": "Variante (↳)",

@@ -89,6 +89,14 @@ function weekRange(refISO) {
 const num = (v) => (v === "" || v == null || isNaN(+v)) ? null : +v;
 const fmtSets = (n) => Number.isInteger(n) ? String(n) : (Math.round(n * 2) / 2).toFixed(1);
 const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+// tempo "2-0-1" → "Ext 2 · Pau 0 · Con 1" (excéntrica · pausa · concéntrica · pausa)
+function tempoLabeled(t) {
+  if (!t) return "—";
+  const parts = String(t).split(/[-–/]/).map((s) => s.trim()).filter((s) => s !== "");
+  if (!parts.length) return esc(String(t));
+  const labels = ["Ext", "Pau", "Con", "Pau"];
+  return parts.map((p, i) => `<span class="tbit">${labels[i] || "·"} ${esc(p)}</span>`).join(" · ");
+}
 function howToHtml(ex) {
   const pasos = (ex.pasos && ex.pasos.length)
     ? `<ol class="pasos">${ex.pasos.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>`
@@ -149,6 +157,8 @@ function entryVolume(e) {
   return w * entryReps(e).reduce((a, b) => a + b, 0);
 }
 function entryHasData(e) { return workWeight(e) != null || entryReps(e).length > 0 || !!(e && e.notas); }
+// "realizado": hay peso o alguna repetición > 0 (todo a 0 y sin peso NO cuenta)
+function entryWorked(e) { return !!e && (workWeight(e) != null || entryReps(e).some((r) => r > 0)); }
 // Texto compacto, p. ej. "9 kg · 10, 8, 4 reps" o "45, 42, 40 s".
 function formatSets(ex, e) {
   const reps = (e && Array.isArray(e.reps)) ? e.reps : [];
@@ -648,24 +658,140 @@ function dayLastLabel(dayId) {
   return s ? `último: ${fmtDate(s.date)}` : null;
 }
 
-function renderDays() {
-  const wk = weekRange(todayISO());
+// ---------- tarjeta de ánimo (aleatoria desde el histórico) ----------
+function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
+function pickWeighted(pool) {
+  const total = pool.reduce((a, x) => a + (x.w || 1), 0);
+  let r = Math.random() * total;
+  for (const x of pool) { r -= (x.w || 1); if (r <= 0) return x; }
+  return pool[pool.length - 1];
+}
+function daysSince(iso) {
+  if (!iso) return 0;
+  const a = new Date(iso + "T00:00:00"), b = new Date(todayISO() + "T00:00:00");
+  return Math.round((b - a) / 86400000);
+}
+function funEquivalence(kg) {
+  const o = [];
+  if (kg >= 1500) o.push(`≈ ${(kg / 1500).toFixed(1)} coches levantados del suelo`);
+  if (kg >= 6000) o.push(`≈ ${(kg / 6000).toFixed(1)} elefantes`);
+  if (kg >= 70) o.push(`≈ ${Math.round(kg / 70)} lavadoras`);
+  o.push("Eso es un montón de hierro. Y subiendo.");
+  return rnd(o);
+}
+function monthlyVolumeCompare() {
+  const ym = (d) => d.slice(0, 7);
+  const now = todayISO(), curM = ym(now);
+  const dt = new Date(now + "T00:00:00"), pv = new Date(dt.getFullYear(), dt.getMonth() - 1, 1);
+  const prevM = `${pv.getFullYear()}-${String(pv.getMonth() + 1).padStart(2, "0")}`;
+  let cur = 0, pr = 0;
+  state.sessions.forEach((s) => {
+    const v = Object.values(s.entries || {}).reduce((x, e) => x + entryVolume(e), 0);
+    if (ym(s.date) === curM) cur += v; else if (ym(s.date) === prevM) pr += v;
+  });
+  if (pr <= 0 || cur <= 0) return null;
+  return { pct: Math.round((cur / pr - 1) * 100), cur: Math.round(cur) };
+}
+function exHistoryAsc(exId) {
+  return state.sessions
+    .filter((s) => s.entries && s.entries[exId])
+    .map((s) => ({ date: s.date, e: s.entries[exId] }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+function motivationPool() {
+  const pool = [], S = state.sessions;
+  if (!S.length) return pool;
+  const exIds = [...new Set(S.flatMap((s) => Object.keys(s.entries || {})))].filter((id) => EXERCISE_INDEX[id]);
+
+  exIds.forEach((id) => {
+    const ex = EXERCISE_INDEX[id];
+    // A1 · progreso de carga
+    if (ex.unit !== "seg") {
+      const h = exHistoryAsc(id).filter((x) => workWeight(x.e) != null);
+      if (h.length >= 2) {
+        const first = workWeight(h[0].e), last = workWeight(h[h.length - 1].e);
+        if (last > first) pool.push({ w: 3, emoji: "🔥", title: `${ex.name}: de ${first} a ${last} kg`, sub: `+${(last - first)} kg desde que empezaste. ¡Qué progresión!` });
+      }
+    }
+    // A2 · fuerza estimada (1RM)
+    if (ex.unit !== "seg") {
+      const h = exHistoryAsc(id).filter((x) => workWeight(x.e) != null && entryReps(x.e).length);
+      if (h.length >= 2) {
+        const e1 = (x) => Math.max(...entryReps(x.e).map((r) => epley(workWeight(x.e), r)));
+        const first = e1(h[0]), last = e1(h[h.length - 1]);
+        if (first > 0 && last > first * 1.03) pool.push({ w: 2, emoji: "💪", title: `+${Math.round((last / first - 1) * 100)}% de fuerza en ${ex.name}`, sub: `Tu fuerza estimada sigue subiendo. Vas muy bien.` });
+      }
+    }
+    // B1 · mejor marca
+    const b = bestFor(id);
+    if (ex.unit === "seg") {
+      if (b.repsMax > 0) pool.push({ w: 1, emoji: "🏅", title: `Tu récord en ${ex.name}`, sub: `${b.repsMax} s aguantados. ¿Los superamos hoy?` });
+    } else if (b.weight > 0) {
+      pool.push({ w: 1, emoji: "🏅", title: `Tu tope en ${ex.name}: ${b.weight} kg`, sub: `Tu mejor marca hasta hoy. A por ella.` });
+    }
+  });
+
+  // C1 · racha
   const streak = weekStreak();
-  const ready = readyToProgress();
-  const panel = `
-    <div class="homepanel">
-      <div class="hp-stat">
-        <div class="hp-big">${streak}</div>
-        <div class="hp-lbl">${streak === 1 ? "semana" : "semanas"} de racha</div>
-      </div>
-      <button class="hp-stat ${ready.length ? "go" : ""}" ${ready.length ? `data-go="#/progress/pr"` : ""}>
-        <div class="hp-big">${ready.length}</div>
-        <div class="hp-lbl">${ready.length === 1 ? "ejercicio listo" : "listos"} para subir peso</div>
-      </button>
-    </div>`;
+  if (streak >= 1) pool.push({ w: 3, emoji: "⛓️", title: `${streak} ${streak === 1 ? "semana" : "semanas"} seguidas`, sub: `No rompas la cadena. Hoy suma una más.` });
+  // C2 · nº de sesiones
+  const n = S.length;
+  pool.push({ w: 1, emoji: "📈", title: `${n} ${n === 1 ? "sesión registrada" : "sesiones registradas"}`, sub: `Cada una cuenta. Vamos a por la siguiente.` });
+  // C3 · hito cercano
+  const nextRound = Math.ceil((n + 1) / 10) * 10;
+  if (nextRound - n <= 3) pool.push({ w: 2, emoji: "🎯", title: `A ${nextRound - n} de tu sesión nº ${nextRound}`, sub: `Un último empujón para el hito.` });
+  // C4 · días desde la última
+  const last = S.map((s) => s.date).sort().slice(-1)[0];
+  const d = daysSince(last);
+  if (d >= 3) pool.push({ w: 2, emoji: "⏰", title: `Hace ${d} días de tu última sesión`, sub: `Hoy toca. Tu yo de mañana te lo agradecerá.` });
+
+  // D1 · volumen total
+  const totalVol = S.reduce((a, s) => a + Object.values(s.entries || {}).reduce((x, e) => x + entryVolume(e), 0), 0);
+  if (totalVol > 0) { const kg = Math.round(totalVol); pool.push({ w: 2, emoji: "🏋️", title: `${kg.toLocaleString("es-ES")} kg movidos en total`, sub: funEquivalence(kg) }); }
+  // D2 · tiempo total
+  const totalSec = S.reduce((a, s) => a + (s.durationSec || 0), 0);
+  if (totalSec >= 3600) { const hrs = Math.round(totalSec / 360) / 10; pool.push({ w: 1, emoji: "⏱️", title: `${hrs} h invertidas en ti`, sub: `Tiempo bien gastado. Suma un rato más hoy.` }); }
+  // D3 · comparativa mensual
+  const cmp = monthlyVolumeCompare();
+  if (cmp && cmp.pct >= 0) pool.push({ w: 2, emoji: "⬆️", title: `+${cmp.pct}% de volumen este mes`, sub: `Vas por encima del mes pasado. Mantén el empuje.` });
+
+  return pool;
+}
+const GYM_EMOJIS = ["🏋️", "💪", "🔥", "🏅", "⚡", "🦾", "🏆", "🥇", "💥", "📈", "🤸", "🏃", "🤜"];
+function motivation() {
+  const pool = motivationPool();
+  const pick = pool.length ? pickWeighted(pool)
+    : { title: "Empieza hoy", sub: "Registra tu primera sesión y verás aquí tu progreso." };
+  return { ...pick, emoji: rnd(GYM_EMOJIS) };
+}
+
+// Inicio del ciclo actual: los días marcados persisten entre semanas hasta
+// completar los 4; al completarlos, se reinician al principio de la semana siguiente.
+function cycleStartISO() {
+  const sorted = state.sessions.filter((s) => s.date).sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (!sorted.length) return null;
+  const resets = [];
+  let done = new Set();
+  for (const s of sorted) {
+    done.add(s.dayId);
+    if (done.size >= DAYS.length) { resets.push(addDaysISO(weekRange(s.date).start, 7)); done = new Set(); }
+  }
+  const today = todayISO();
+  const applicable = resets.filter((r) => r <= today);
+  return applicable.length ? applicable[applicable.length - 1] : null;
+}
+function cycleDoneSet() {
+  const start = cycleStartISO();
+  const done = new Set();
+  state.sessions.forEach((s) => { if (!start || s.date >= start) done.add(s.dayId); });
+  return done;
+}
+
+function renderDays() {
+  const cycleDone = cycleDoneSet();
   const cards = DAYS.map((d, i) => {
     const last = dayLastLabel(d.id);
-    const done = state.sessions.some((s) => s.dayId === d.id && s.date >= wk.start && s.date <= wk.end);
+    const done = cycleDone.has(d.id);
     return `
       <button class="daycard ${done ? "done" : ""}" data-group="${d.group}" data-go="#/plan/${d.id}">
         ${done ? `<span class="wkdone">✓ Hecho</span>` : `<span class="didx">${i + 1}</span>`}
@@ -684,12 +810,17 @@ function renderDays() {
           <button class="linkbtn" id="resumeDrop">Descartar</button>
         </div>
       </div>` : "";
+  const m = motivation();
+  const motivCard = `
+      <div class="motiv">
+        <div class="motiv-emoji">${m.emoji}</div>
+        <div class="motiv-txt"><div class="motiv-title">${esc(m.title)}</div><div class="motiv-sub">${esc(m.sub)}</div></div>
+      </div>`;
   shell(`
     <div class="screen">
       ${topbar("Elige tu día", "Hoy entrenas")}
+      ${motivCard}
       ${resume}
-      ${panel}
-      <p class="weeknote">Semana del ${fmtDate(wk.start)} al ${fmtDate(wk.end)} · marcados los que ya hiciste</p>
       <div class="daylist">${cards}</div>
       <div class="divider"><span class="label">Recuerda</span><span class="rule"></span></div>
       <p class="sub">Cada grupo muscular, 2 veces por semana. Calienta 5 min antes de empezar.</p>
@@ -727,8 +858,8 @@ function renderDayPreview(dayId) {
       <button class="linkbtn" data-go="#/days">← Días</button>
       ${topbar(day.name, "Vista previa")}
       <div class="pp-meta">${day.exercises.length} ejercicios${day.durMin ? ` · ~${day.durMin} min estimados` : ""}</div>
+      <div class="save-row" style="margin:4px 0 16px"><button class="btn btn-primary" id="startday">Empezar sesión</button></div>
       <div class="pplist">${rows}</div>
-      <div class="save-row"><button class="btn btn-primary" id="startday">Empezar sesión</button></div>
     </div>`, "days");
   bindCommon();
   document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
@@ -753,7 +884,7 @@ function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
 // nº de ejercicios con algún dato en el borrador
 function draftFilled(d) {
   if (!d || !d.entries) return 0;
-  return Object.values(d.entries).filter((e) => e && (num(e.peso) != null || (Array.isArray(e.reps) && e.reps.some((r) => num(r) != null)) || (e.notas || "").trim())).length;
+  return Object.values(d.entries).filter((e) => e && (num(e.peso) != null || (Array.isArray(e.reps) && e.reps.some((r) => num(r) > 0)) || (e.notas || "").trim())).length;
 }
 
 function initDraft(dayId) { draft = { dayId, date: todayISO(), idx: 0, entries: {}, pendingCue: false, startedAt: Date.now() }; }
@@ -794,7 +925,7 @@ function renderCue(day) {
   const prevBase = day.exercises[draft.idx - 1];
   const prev = resolveExercise(prevBase);
   const e = draft.entries[prev.id];
-  const hasData = e && entryHasData(e);
+  const hasData = entryWorked(e);
 
   // logro del ejercicio recién terminado (vs histórico)
   let badge = "";
@@ -817,7 +948,7 @@ function renderCue(day) {
   let done = 0, sets = 0, vol = 0;
   for (const base of day.exercises) {
     const x = resolveExercise(base), en = draft.entries[x.id];
-    if (en && entryHasData(en)) { done++; sets += entryReps(en).length; vol += entryVolume(en); }
+    if (entryWorked(en)) { done++; sets += entryReps(en).filter((r) => r > 0).length; vol += entryVolume(en); }
   }
   const elapsed = draft.startedAt ? Math.round((Date.now() - draft.startedAt) / 1000) : 0;
   const kg = Math.round(vol).toLocaleString("es-ES");
@@ -872,35 +1003,30 @@ function renderStep(day) {
   const pesoVal = saved && saved.peso != null ? saved.peso
     : (last && workWeight(last.entry) != null ? workWeight(last.entry) : "");
   const lastRepsRaw = last && last.entry && Array.isArray(last.entry.reps) ? last.entry.reps : [];
-  const repVal = (k) => (saved && saved.reps && saved.reps[k] != null) ? saved.reps[k]
-    : (lastRepsRaw[k] != null ? lastRepsRaw[k] : "");
+  const repVal = (k) => (saved && saved.reps && saved.reps[k] != null) ? saved.reps[k] : 0;
 
   const lastReps = last ? entryReps(last.entry) : [];
   const gate = lastReps.length ? Math.min(...lastReps) : null;
   const pct = gate != null ? Math.max(0, Math.min(1, (gate - ex.repLow) / Math.max(1, ex.repHigh - ex.repLow))) : 0;
   const full = gate != null && gate >= ex.repHigh;
 
-  const isDone = (k) => {
-    const e = draft.entries[day.exercises[k].id];
-    return !!e && (workWeight(e) != null || entryReps(e).length > 0);
-  };
+  const isDone = (k) => entryWorked(draft.entries[day.exercises[k].id]);
   const dots = day.exercises.map((_, k) =>
     `<button class="dot ${k === i ? "now" : isDone(k) ? "done" : ""}" data-jump="${k}" aria-label="Ir al ejercicio ${k + 1}"></button>`).join("");
 
   const repCells = Array.from({ length: ex.sets }).map((_, k) => `
     <div class="repcell">
-      <span>S${k + 1}</span>
-      <input type="number" inputmode="numeric" data-field="reps" value="${esc(repVal(k))}" placeholder="${ex.unit === "seg" ? "seg" : range}">
+      <span class="rc-last" title="Última vez">${lastRepsRaw[k] != null ? esc(String(lastRepsRaw[k])) : "S" + (k + 1)}</span>
+      <input type="number" inputmode="numeric" data-field="reps" value="${esc(repVal(k))}" placeholder="0">
     </div>`).join("");
 
   const micon = muscleIconSrc(ex);
-  const muscles = `<div class="muscles-row">
+  const muscleOverlay = `<div class="muscle-overlay">
       ${micon ? `<img class="micon" src="${micon}" alt="${esc(ex.mainMuscle)}" loading="lazy">` : ""}
-      <div class="muscles">
-        <span class="mtag main">${esc(ex.mainMuscle)}</span>
-        ${ex.secMuscles.map((m) => `<span class="mtag">${esc(m)}</span>`).join("")}
-      </div>
+      <span class="mtag main">${esc(ex.mainMuscle)}</span>
     </div>`;
+  const secRow = (ex.secMuscles && ex.secMuscles.length)
+    ? `<div class="ref-row"><span>Secundarios</span><b>${ex.secMuscles.map((m) => esc(m)).join(" · ")}</b></div>` : "";
 
   const weightBox = ex.unit === "seg" ? "" : `
     <div class="weightbox">
@@ -918,6 +1044,7 @@ function renderStep(day) {
     photoHtml = `<div class="photo demo" data-zoom="1">
           <div class="photo-ph">${I.image}<span>Demostración no disponible</span></div>
           ${frames}
+          ${muscleOverlay}
           <span class="photo-src">${esc(exerciseSource(ex.id, ex.isVariant))}</span>
           <span class="photo-zoom" aria-hidden="true">⤢</span>
         </div>`;
@@ -926,6 +1053,7 @@ function renderStep(day) {
     photoHtml = `<div class="photo">
           <img src="${localSrc}" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}${ex.isVariant ? "_v" : ""}')">
           <div class="photo-ph">${I.image}<span>${ex.isVariant ? "Foto de la variante" : "Foto del ejercicio"}</span></div>
+          ${muscleOverlay}
         </div>`;
   }
 
@@ -939,45 +1067,23 @@ function renderStep(day) {
       <div class="stepper">${dots}</div>
 
       <div class="exercise" data-ex="${ex.id}">
-        ${photoHtml}
-
-        <div class="ex-top">
+        <div class="ex-title-top">
           <div class="ex-name">${esc(ex.name)}</div>
-          <div class="ex-scheme">${esc(ex.scheme)}<span class="rir">RIR ${esc(ex.rir)}</span></div>
         </div>
 
-        ${base.variant ? `
-        <div class="swap-note">${ex.isVariant
-            ? `↳ Variante de <b>${esc(base.name)}</b>`
-            : `Alternativa: <b>${esc(base.variant.name)}</b>`}</div>
-        <button class="chip swap" data-swap="${base.id}">${I.swap} ${ex.isVariant ? "Usar original" : "Cambiar ejercicio"}</button>` : ""}
+        ${photoHtml}
 
-        <div class="ex-meta">${I.clock} Descanso ${esc(ex.descanso || "—")} · Tempo ${esc(ex.tempo || "—")}</div>
-
-        <div class="tagrow">
-          ${ex.tipo ? `<span class="tag">${esc(cap(ex.tipo))}</span>` : ""}
-          ${ex.prioridad ? `<span class="tag">${esc(cap(ex.prioridad))}</span>` : ""}
-          ${ex.fatiga ? `<span class="tag fat-${esc(ex.fatiga)}">Fatiga ${esc(ex.fatiga)}</span>` : ""}
-          ${ex.tipoCarga === "axial" ? `<span class="tag">Carga axial</span>` : ""}
-          ${(ex.etiquetas || []).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}
+        <div class="ex-flags">
+          ${ex.fatiga ? `<span class="tag fat-${esc(ex.fatiga)}">Fatiga ${esc(ex.fatiga)}</span>` : "<span></span>"}
           <button class="fav ${isFav(base.id) ? "on" : ""}" data-fav="${base.id}" aria-label="Favorito">${isFav(base.id) ? "★" : "☆"}</button>
         </div>
 
-        ${muscles}
+        <div class="ex-meta">Tempo ${tempoLabeled(ex.tempo)}</div>
 
         ${ex.calienta ? `<div class="warmup">${I.clock} ${esc(ex.calientaTxt || "Haz 1-2 series de aproximación antes de las efectivas.")}</div>` : ""}
 
-        <div class="ex-tools">
-          <a class="chip" href="${ex.video || videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
-          <button class="chip" data-info="how">Cómo se hace</button>
-          <button class="chip" data-info="err">Errores a evitar</button>
-          ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
-        </div>
-
-        <div class="ejec collapse" id="exinfo"></div>
-
         <div class="suggest ${sug.kind === "up" ? "up" : sug.kind === "cap" ? "cap" : ""}">
-          <span class="ico">${sug.kind === "up" ? "↑" : sug.kind === "cap" ? "10kg" : sug.kind === "new" ? "•" : "→"}</span>
+          <span class="ico">${sug.kind === "up" ? "↑" : sug.kind === "cap" ? DUMBBELL_CAP_KG + "kg" : sug.kind === "new" ? "•" : "→"}</span>
           <span>${esc(sug.text)}</span>
         </div>
 
@@ -1000,6 +1106,25 @@ function renderStep(day) {
           <label>Notas del ejercicio</label>
           <textarea data-field="notas" placeholder="Sensaciones, técnica, RIR real…">${esc(saved ? saved.notas || "" : "")}</textarea>
         </div>
+
+        <div class="ex-ref">
+          <div class="ref-row"><span>Series × reps</span><b>${esc(ex.scheme)}</b></div>
+          <div class="ref-row"><span>RIR objetivo</span><b>${esc(ex.rir)}</b></div>
+          <div class="ref-row"><span>Descanso</span><b>${esc(ex.descanso || "—")}</b></div>
+          ${secRow}
+        </div>
+
+        ${base.variant ? `<button class="swap-note swap-btn" data-swap="${base.id}">${ex.isVariant
+            ? `${I.swap} Volver al original: <b>${esc(base.name)}</b>`
+            : `${I.swap} Alternativa: <b>${esc(base.variant.name)}</b>`}</button>` : ""}
+
+        <div class="ex-tools">
+          <a class="chip" href="${ex.video || videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
+          <button class="chip" data-info="how">Cómo se hace</button>
+          <button class="chip" data-info="err">Errores a evitar</button>
+          ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
+        </div>
+        <div class="ejec collapse" id="exinfo"></div>
       </div>
 
       <div class="step-nav">
@@ -1050,7 +1175,7 @@ function renderSessionSummary(day) {
   const rows = day.exercises.map((base, k) => {
     const ex = resolveExercise(base);
     const e = draft.entries[ex.id];
-    const has = e && entryHasData(e);
+    const has = entryWorked(e);
     return `<button class="sumrow ${has ? "" : "skip"}" data-edit="${k}">
         <div class="sumname">${esc(ex.name)}${ex.isVariant ? ` <span class="vbadge">variante</span>` : ""}</div>
         <div class="sumval">${has ? esc(formatSets(ex, e)) : "sin registrar"}</div>
@@ -1110,7 +1235,7 @@ async function saveSession(day) {
   const entries = {};
   for (const ex of day.exercises) {
     const e = draft.entries[ex.id];
-    if (e && entryHasData(e)) entries[ex.id] = { peso: e.peso ?? null, reps: e.reps || [], notas: e.notas || "" };
+    if (entryWorked(e)) entries[ex.id] = { peso: e.peso ?? null, reps: e.reps || [], notas: e.notas || "" };
   }
   if (Object.keys(entries).length === 0) { toast("Registra al menos un ejercicio", true); return; }
 
