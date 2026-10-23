@@ -962,3 +962,42 @@ a { color: inherit; }
 .vr-txt span.ok { color: var(--ok); }
 .vr-act { display: flex; gap: 8px; flex: none; }
 .chip.danger { color: #e88; border-color: rgba(230,120,120,0.4); }
+
+/* ====== Feed de calentamiento / vuelta a la calma (Reels) ====== */
+.reel { position: fixed; inset: 0; z-index: 60; background: #000; }
+.reel-scroll { height: 100dvh; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.reel-scroll::-webkit-scrollbar { display: none; }
+.reel-slide { position: relative; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.reel-vid { width: 100%; height: 100%; object-fit: cover; background: #000; }
+.reel-counter { position: absolute; top: calc(14px + var(--safe-top)); left: 16px; font-family: var(--mono); font-size: 12px; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.35); padding: 4px 10px; border-radius: 99px; }
+.reel-hint { position: absolute; bottom: calc(40px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); font-family: var(--mono); font-size: 13px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.35); padding: 6px 14px; border-radius: 99px; animation: reelhint 1.8s ease-in-out infinite; }
+@keyframes reelhint { 0%,100% { transform: translate(-50%, 0); opacity: 0.85; } 50% { transform: translate(-50%, -8px); opacity: 1; } }
+.reel-skip { position: absolute; top: calc(12px + var(--safe-top)); right: 14px; z-index: 2; font-family: var(--mono); font-size: 13px; color: #fff; background: rgba(0,0,0,0.4); border: none; border-radius: 99px; padding: 7px 14px; cursor: pointer; }
+.reel-end { flex-direction: column; gap: 10px; text-align: center; background: radial-gradient(120% 80% at 50% 35%, rgba(245,166,35,0.18), transparent 60%), var(--bg); }
+.reel-end-emoji { font-size: 72px; line-height: 1; }
+.reel-end-txt { font-family: var(--display); font-weight: 900; font-size: 26px; color: var(--accent); }
+.reel-end-sub { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* ====== Pantalla de ejercicio v3.2 (peso prominente, inputs en línea) ====== */
+.bigpeso { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 14px 0 6px; }
+.bigpeso .bp-lbl { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.bigpeso .bp-val { font-family: var(--display); font-weight: 900; font-size: 60px; line-height: 1; color: var(--accent); letter-spacing: -0.02em; }
+.bigpeso .bp-val small { font-size: 22px; font-weight: 800; margin-left: 4px; color: var(--ink); }
+
+/* overlays sobre la foto/vídeo */
+.tempo-overlay { position: absolute; left: 8px; bottom: 8px; z-index: 3; font-family: var(--mono); font-size: 11px;
+  color: #e7ecf4; background: rgba(8,11,16,0.6); border-radius: 99px; padding: 4px 9px; }
+.tempo-overlay .tbit { white-space: nowrap; }
+.fat-overlay { position: absolute; right: 8px; top: 8px; z-index: 3; background: rgba(8,11,16,0.6);
+  border: 1px solid rgba(255,255,255,0.18); }
+.fat-overlay.fat-baja { color: var(--ok); }
+.fat-overlay.fat-media { color: var(--accent); }
+.fat-overlay.fat-alta { color: #e87b7b; }
+
+/* grid de peso + reps en la misma línea */
+.reps-grid { grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); }
+.repcell.peso input { border-color: var(--accent); color: var(--accent); font-weight: 800; }
+.repcell.peso .rc-last { color: var(--accent); }
+
+/* Next arriba: separar un poco del grid */
+.exercise .step-nav { margin-top: 16px; }

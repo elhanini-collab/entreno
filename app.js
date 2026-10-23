@@ -22,6 +22,9 @@ const state = {
   user: null,
   sessions: [],      // [{id, dayId, dayName, date, entries:{exId:{peso,reps,notas}}, durationSec}]
   loaded: false,
+  videoKeys: new Set(),
+  seqLists: { warm: { torso: [], pierna: [] }, cool: { torso: [], pierna: [] } },
+  seqCounts: { warm: { torso: 0, pierna: 0 }, cool: { torso: 0, pierna: 0 } },
   variants: {},      // { exId: true }  ejercicios sustituidos por su variante
   favorites: {},     // { exId: true }  ejercicios marcados como favoritos
   photos: [],        // fotos de progreso
@@ -179,31 +182,32 @@ function lastEntryFor(exId) {
 }
 
 function suggestion(ex) {
+  const pini = ex && ex.pesoInicial != null ? ex.pesoInicial : null;
   const last = lastEntryFor(ex.id);
-  if (!last) return { kind: "new", text: ex && ex.pesoInicial
+  if (!last) return { kind: "new", weight: pini, text: ex && ex.pesoInicial
     ? `Primer registro. Empieza con unos ${ex.pesoInicial} kg en el extremo bajo del rango con buena técnica.`
     : "Primer registro. Empieza en el extremo bajo del rango con buena técnica." };
   const reps = entryReps(last.entry);
   const weight = workWeight(last.entry);
-  if (!reps.length) return { kind: "hold", text: `Última vez con ${weight ?? "?"} kg. Anota tus reps por serie para ver la progresión.` };
+  if (!reps.length) return { kind: "hold", weight: weight ?? pini, text: `Última vez con ${weight ?? "?"} kg. Anota tus reps por serie para ver la progresión.` };
 
   const repsStr = reps.join("·");
   const allHigh = reps.length >= ex.sets && reps.every((r) => r >= ex.repHigh);
 
   if (ex.unit === "seg") {
-    if (allHigh) return { kind: "up", text: `Aguantaste ${repsStr} s en todas las series. Sube a ${ex.repHigh + 10} s o añade carga.` };
-    return { kind: "hold", text: `Última vez ${repsStr} s. Suma segundos en las series flojas hasta ${ex.repHigh} s.` };
+    if (allHigh) return { kind: "up", weight: null, text: `Aguantaste ${repsStr} s en todas las series. Sube a ${ex.repHigh + 10} s o añade carga.` };
+    return { kind: "hold", weight: null, text: `Última vez ${repsStr} s. Suma segundos en las series flojas hasta ${ex.repHigh} s.` };
   }
   if (allHigh) {
     if (weight != null && weight >= DUMBBELL_CAP_KG) {
-      return { kind: "cap", text: `${repsStr} reps con ${weight} kg (tu tope) en todas las series. Progresa con más reps, excéntrica de 3-4 s o versión a una pierna/un brazo.` };
+      return { kind: "cap", weight, text: `${repsStr} reps con ${weight} kg (tu tope) en todas las series. Progresa con más reps, excéntrica de 3-4 s o versión a una pierna/un brazo.` };
     }
-    const next = weight != null ? weight + (weight < 5 ? 1 : 2) : null;
-    return { kind: "up", text: next != null
+    const next = weight != null ? weight + (weight < 5 ? 1 : 2) : pini;
+    return { kind: "up", weight: next, text: next != null
       ? `Todas las series al tope (${repsStr}). Sube a ${next} kg y vuelve a ${ex.repLow} reps.`
       : `Todas las series al tope. Sube algo de peso y vuelve a ${ex.repLow} reps.` };
   }
-  return { kind: "hold", text: `Última vez ${repsStr} reps${weight != null ? ` · ${weight} kg` : ""}. Mantén el peso y sube reps en las series flojas (objetivo ${ex.repHigh}).` };
+  return { kind: "hold", weight: weight ?? pini, text: `Última vez ${repsStr} reps${weight != null ? ` · ${weight} kg` : ""}. Mantén el peso y sube reps en las series flojas (objetivo ${ex.repHigh}).` };
 }
 
 // ========== helpers de funciones nuevas ==========
@@ -602,14 +606,118 @@ async function hydrateDemoVideo(ex) {
   const photo = document.querySelector(".exercise .photo"); if (!photo) return;
   clearDemoVidURL();
   const url = URL.createObjectURL(rec.blob); _demoVidURL = url;
-  photo.querySelectorAll(".fr, .photo-ph, img").forEach((e) => e.remove());
+  photo.querySelectorAll(".fr, .photo-ph, img:not(.micon)").forEach((e) => e.remove());
   const src = photo.querySelector(".photo-src"); if (src) src.textContent = "tu vídeo";
-  const vb = photo.querySelector("[data-vidadd]"); if (vb) vb.textContent = "Cambiar vídeo";
+  const vb = document.querySelector("[data-vidadd]"); if (vb) vb.textContent = "Cambiar vídeo propio";
   const v = document.createElement("video");
   v.className = "demo-vid"; v.src = url; v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
   v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", "");
   photo.insertBefore(v, photo.firstChild);
   v.play().catch(() => {});
+}
+
+// ---------- secuencias de vídeos: calentamiento / vuelta a la calma, por grupo ----------
+// kind ∈ {warm, cool} · group ∈ {torso, pierna} · clave: seq:<kind>:<group>:<uid>
+function seqPrefix(kind, group) { return `seq:${kind}:${group}:`; }
+function allMediaRecords() {
+  return vidTx("readonly").then((st) => new Promise((res) => {
+    const vr = st.getAll(), kr = st.getAllKeys(); let vals = null, keys = null;
+    const zip = () => keys.map((k, i) => ({ key: k, rec: vals[i] }));
+    vr.onsuccess = () => { vals = vr.result; if (keys) res(zip()); };
+    kr.onsuccess = () => { keys = kr.result; if (vals) res(zip()); };
+    vr.onerror = kr.onerror = () => res([]);
+  })).catch(() => []);
+}
+async function refreshSeqLists() {
+  const counts = { warm: { torso: 0, pierna: 0 }, cool: { torso: 0, pierna: 0 } };
+  const lists = { warm: { torso: [], pierna: [] }, cool: { torso: [], pierna: [] } };
+  try {
+    const all = await allMediaRecords();
+    for (const kind of ["warm", "cool"]) for (const group of ["torso", "pierna"]) {
+      const pre = seqPrefix(kind, group);
+      const items = all.filter((x) => typeof x.key === "string" && x.key.startsWith(pre))
+        .sort((a, b) => ((a.rec && a.rec.order) || 0) - ((b.rec && b.rec.order) || 0));
+      lists[kind][group] = items.map((x) => x.key);
+      counts[kind][group] = items.length;
+    }
+  } catch (_) {}
+  state.seqLists = lists; state.seqCounts = counts;
+}
+function seqCount(kind, group) { try { return state.seqCounts[kind][group]; } catch (_) { return 0; } }
+function seqKeys(kind, group) { try { return state.seqLists[kind][group] || []; } catch (_) { return []; } }
+async function addSeqVideo(kind, group, blob, type) {
+  const pre = seqPrefix(kind, group);
+  const n = seqCount(kind, group);
+  const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await putVideoRec(pre + uid, { blob, type: type || blob.type || "", addedAt: Date.now(), order: n });
+}
+function putVideoRec(key, rec) {
+  return vidTx("readwrite").then((st) => new Promise((res, rej) => { const r = st.put(rec, key); r.onsuccess = () => res(); r.onerror = () => rej(r.error); }));
+}
+async function moveSeq(kind, group, key, dir) {
+  const keys = seqKeys(kind, group).slice();
+  const i = keys.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= keys.length) return;
+  const a = await getVideo(keys[i]), b = await getVideo(keys[j]);
+  if (!a || !b) return;
+  const oa = a.order, ob = b.order; a.order = ob; b.order = oa;
+  await putVideoRec(keys[i], a); await putVideoRec(keys[j], b);
+  await refreshSeqLists();
+}
+
+// feed vertical a pantalla completa (estilo Reels) de una secuencia de vídeos locales
+let _reel = null;
+function teardownReel() {
+  if (!_reel) return;
+  try { _reel.io && _reel.io.disconnect(); _reel.ioEnd && _reel.ioEnd.disconnect(); } catch (_) {}
+  (_reel.urls || []).forEach((u) => { try { URL.revokeObjectURL(u); } catch (_) {} });
+  _reel = null;
+}
+async function renderReelFeed(kind, group, onDone) {
+  teardownReel();
+  const keys = seqKeys(kind, group);
+  if (!keys.length) { onDone(); return; }
+  const recs = [];
+  for (const k of keys) { const r = await getVideo(k); if (r && r.blob) recs.push(r); }
+  if (!recs.length) { onDone(); return; }
+  const urls = recs.map((r) => URL.createObjectURL(r.blob));
+  const endLabel = kind === "warm" ? "¡A entrenar!" : "Sesión completada";
+  const slides = urls.map((u, i) => `
+    <section class="reel-slide">
+      <video class="reel-vid" data-i="${i}" src="${u}" muted loop playsinline webkit-playsinline preload="auto"></video>
+      <div class="reel-counter">${i + 1} / ${urls.length}</div>
+      ${i === 0 ? `<div class="reel-hint">desliza hacia arriba ↑</div>` : ""}
+    </section>`).join("");
+  root.innerHTML = `
+    <div class="reel">
+      <button class="reel-skip" id="reelskip">Saltar ✕</button>
+      <div class="reel-scroll" id="reelscroll">
+        ${slides}
+        <section class="reel-slide reel-end" id="reelend">
+          <div class="reel-end-emoji">${kind === "warm" ? "💪" : "🧘"}</div>
+          <div class="reel-end-txt">${endLabel}</div>
+          <div class="reel-end-sub">desliza para continuar</div>
+        </section>
+      </div>
+    </div>`;
+  const finish = () => { teardownReel(); onDone(); };
+  const skip = $("#reelskip"); if (skip) skip.onclick = finish;
+  const vids = Array.from(document.querySelectorAll(".reel-vid"));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      const v = e.target;
+      if (e.isIntersecting && e.intersectionRatio >= 0.6) { v.play().catch(() => {}); }
+      else { try { v.pause(); } catch (_) {} }
+    });
+  }, { threshold: [0, 0.6, 1] });
+  vids.forEach((v) => io.observe(v));
+  const endEl = $("#reelend");
+  const ioEnd = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting && e.intersectionRatio >= 0.6) finish(); });
+  }, { threshold: [0, 0.6] });
+  if (endEl) ioEnd.observe(endEl);
+  _reel = { io, ioEnd, urls };
+  if (vids[0]) vids[0].play().catch(() => {});
 }
 
 // selector de vídeo del carrete para una clave de ejercicio
@@ -654,6 +762,7 @@ function render() {
     case "progress": return renderProgress(r.a, r.b);
     case "principios": return renderPrinciples();
     case "videos": return renderVideos();
+    case "warmup": return renderWarmupManager();
     default: return renderDays();
   }
 }
@@ -945,6 +1054,63 @@ function renderVideos() {
   });
 }
 
+// gestión de las secuencias de calentamiento / vuelta a la calma (por grupo)
+function seqSection(kind, group, title) {
+  const keys = seqKeys(kind, group);
+  const rows = keys.map((k, i) => `
+      <div class="vidrow">
+        <div class="vr-txt"><b>Vídeo ${i + 1}</b></div>
+        <div class="vr-act">
+          <button class="chip" data-seqmove="${k}" data-kind="${kind}" data-group="${group}" data-dir="-1" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="chip" data-seqmove="${k}" data-kind="${kind}" data-group="${group}" data-dir="1" ${i === keys.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="chip danger" data-seqdel="${k}">✕</button>
+        </div>
+      </div>`).join("") || `<p class="save-hint" style="margin:6px 0">Aún no has añadido vídeos.</p>`;
+  return `<div class="divider"><span class="label">${esc(title)}</span><span class="rule"></span></div>
+      ${rows}
+      <button class="btn btn-ghost" data-seqadd="${kind}" data-group="${group}" style="margin-top:8px">+ Añadir vídeo</button>`;
+}
+function renderWarmupManager() {
+  shell(`
+    <div class="screen">
+      <button class="linkbtn" data-go="#/principios">← Guía</button>
+      ${topbar("Calentamiento y estiramientos", "Tus secuencias de vídeo")}
+      <p class="sub">Importa tus vídeos del carrete, <b>en orden</b>, para cada día. Antes del entreno verás el calentamiento y, al terminar, la vuelta a la calma: un vídeo a pantalla completa, deslizas hacia arriba y pasa al siguiente. Son <b>skippables</b> y se guardan <b>solo en este dispositivo</b>.</p>
+      <div class="divider"><span class="label">Días de Torso</span><span class="rule"></span></div>
+      ${seqSection("warm", "torso", "Calentamiento · Torso")}
+      ${seqSection("cool", "torso", "Vuelta a la calma · Torso")}
+      <div class="divider"><span class="label">Días de Pierna</span><span class="rule"></span></div>
+      ${seqSection("warm", "pierna", "Calentamiento · Pierna")}
+      ${seqSection("cool", "pierna", "Vuelta a la calma · Pierna")}
+      <p class="save-hint" style="margin-top:16px">Si una lista está vacía, esa pantalla no aparece. Nada se sube a internet.</p>
+    </div>`, "principios");
+  bindCommon();
+  document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => go(b.dataset.go));
+  document.querySelectorAll("[data-seqadd]").forEach((b) => b.onclick = () => {
+    const kind = b.dataset.seqadd, group = b.dataset.group;
+    pickSeqVideo(kind, group, async () => { await refreshSeqLists(); render(); });
+  });
+  document.querySelectorAll("[data-seqmove]").forEach((b) => b.onclick = async () => {
+    await moveSeq(b.dataset.kind, b.dataset.group, b.dataset.seqmove, +b.dataset.dir); render();
+  });
+  document.querySelectorAll("[data-seqdel]").forEach((b) => b.onclick = async () => {
+    if (!confirm("¿Borrar este vídeo de este dispositivo?")) return;
+    await deleteVideo(b.dataset.seqdel); await refreshSeqLists(); render();
+  });
+}
+function pickSeqVideo(kind, group, done) {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "video/*"; inp.style.display = "none";
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0]; if (!f) { inp.remove(); return; }
+    if (f.size > 60 * 1024 * 1024) { toast("El vídeo es muy grande (máx. ~60 MB).", true); inp.remove(); return; }
+    try { await requestPersist(); await addSeqVideo(kind, group, f, f.type); await refreshSeqLists(); toast("Vídeo añadido"); if (done) done(); }
+    catch (e) { console.error(e); toast("No se pudo guardar el vídeo", true); }
+    inp.remove();
+  };
+  document.body.appendChild(inp); inp.click();
+}
+
 // ---------- vista previa del día (antes de empezar) ----------
 function renderDayPreview(dayId) {
   const day = DAYS.find((d) => d.id === dayId);
@@ -1023,7 +1189,14 @@ function renderSession(dayId) {
   if (!draft || draft.dayId !== dayId) { initDraft(dayId); draft.pendingCue = true; }
   if (draft.idx >= day.exercises.length) {
     if (!draft.editingId && !draft.celebrated) return renderCelebrate(day);
+    if (!draft.editingId && !draft.cooledDown && seqCount("cool", day.group) > 0) {
+      return renderReelFeed("cool", day.group, () => { draft.cooledDown = true; saveDraft(); render(); window.scrollTo(0, 0); });
+    }
     return renderSessionSummary(day);
+  }
+  // calentamiento: feed de vídeos antes del primer ejercicio (skippable)
+  if (!draft.editingId && !draft.warmedUp && draft.idx === 0 && seqCount("warm", day.group) > 0) {
+    return renderReelFeed("warm", day.group, () => { draft.warmedUp = true; saveDraft(); render(); window.scrollTo(0, 0); });
   }
   if (draft.pendingCue) {
     if (draft.idx === 0) draft.pendingCue = false;   // sin transición antes del primero
@@ -1113,7 +1286,8 @@ function renderStep(day) {
   const unitLabel = ex.unit === "seg" ? "seg" : "reps";
 
   const pesoVal = saved && saved.peso != null ? saved.peso
-    : (last && workWeight(last.entry) != null ? workWeight(last.entry) : "");
+    : (sug.weight != null ? sug.weight
+      : (last && workWeight(last.entry) != null ? workWeight(last.entry) : ""));
   const lastRepsRaw = last && last.entry && Array.isArray(last.entry.reps) ? last.entry.reps : [];
   const repVal = (k) => (saved && saved.reps && saved.reps[k] != null) ? saved.reps[k] : 0;
 
@@ -1140,11 +1314,19 @@ function renderStep(day) {
   const secRow = (ex.secMuscles && ex.secMuscles.length)
     ? `<div class="ref-row"><span>Secundarios</span><b>${ex.secMuscles.map((m) => esc(m)).join(" · ")}</b></div>` : "";
 
-  const weightBox = ex.unit === "seg" ? "" : `
-    <div class="weightbox">
-      <label>Peso (kg) · el mismo para todas las series</label>
-      <div class="unit"><input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(pesoVal)}" placeholder="—"><span class="suf">kg</span></div>
+  const targetW = (sug.weight != null) ? sug.weight : (pesoVal !== "" ? pesoVal : (ex.pesoInicial != null ? ex.pesoInicial : null));
+  const bigWeight = ex.unit === "seg" ? "" : `
+    <div class="bigpeso">
+      <span class="bp-lbl">Pon estas mancuernas</span>
+      <span class="bp-val">${targetW != null ? esc(targetW) : "—"}<small>kg</small></span>
     </div>`;
+  const pesoCell = ex.unit === "seg" ? "" : `
+    <div class="repcell peso">
+      <span class="rc-last">kg</span>
+      <input type="number" inputmode="decimal" step="0.5" data-field="peso" value="${esc(pesoVal)}" placeholder="—">
+    </div>`;
+  const fatigaOverlay = ex.fatiga ? `<span class="tag fat-${esc(ex.fatiga)} fat-overlay">Fatiga ${esc(ex.fatiga)}</span>` : "";
+  const tempoOverlay = (ex.tempo && tempoLabeled(ex.tempo) !== "—") ? `<div class="tempo-overlay">Tempo ${tempoLabeled(ex.tempo)}</div>` : "";
 
   // foto/demostración: imagen del ejercicio o de su variante (Free Exercise DB / GIF)
   const demoImgs = exerciseImages(ex.id, ex.isVariant);
@@ -1157,16 +1339,18 @@ function renderStep(day) {
           <div class="photo-ph">${I.image}<span>Demostración no disponible</span></div>
           ${frames}
           ${muscleOverlay}
+          ${fatigaOverlay}
+          ${tempoOverlay}
           <span class="photo-src">${esc(exerciseSource(ex.id, ex.isVariant))}</span>
-          <span class="photo-zoom" aria-hidden="true">⤢</span>
-          <button class="vid-btn" data-vidadd="1">${hasVideo(mediaKey(ex.id, ex.isVariant)) ? "Cambiar vídeo" : "Añadir vídeo"}</button>
         </div>`;
   } else {
     const localSrc = ex.isVariant ? `img/${ex.id}_v.jpg` : `img/${ex.id}.jpg`;
-    photoHtml = `<div class="photo">
+    photoHtml = `<div class="photo" data-zoom="1">
           <img src="${localSrc}" alt="${esc(ex.name)}" onload="this.nextElementSibling.style.display='none'" onerror="imgFallback(this, '${ex.id}${ex.isVariant ? "_v" : ""}')">
           <div class="photo-ph">${I.image}<span>${ex.isVariant ? "Foto de la variante" : "Foto del ejercicio"}</span></div>
           ${muscleOverlay}
+          ${fatigaOverlay}
+          ${tempoOverlay}
         </div>`;
   }
 
@@ -1186,19 +1370,17 @@ function renderStep(day) {
 
         ${photoHtml}
 
-        <div class="ex-flags">
-          ${ex.fatiga ? `<span class="tag fat-${esc(ex.fatiga)}">Fatiga ${esc(ex.fatiga)}</span>` : "<span></span>"}
-          <button class="fav ${isFav(base.id) ? "on" : ""}" data-fav="${base.id}" aria-label="Favorito">${isFav(base.id) ? "★" : "☆"}</button>
-        </div>
+        ${bigWeight}
 
-        <div class="ex-meta">Tempo ${tempoLabeled(ex.tempo)}</div>
+        <div class="reps-lbl">${ex.unit === "seg" ? "Segundos por serie" : "Peso y reps por serie (" + range + ")"}</div>
+        <div class="reps-grid">${pesoCell}${repCells}</div>
+
+        <div class="step-nav">
+          ${i > 0 ? `<button class="btn btn-ghost" id="prev">Anterior</button>` : `<span></span>`}
+          <button class="btn btn-primary" id="next">${i === total - 1 ? "Hecho · Resumen" : "Hecho · Siguiente"}</button>
+        </div>
 
         ${ex.calienta ? `<div class="warmup">${I.clock} ${esc(ex.calientaTxt || "Haz 1-2 series de aproximación antes de las efectivas.")}</div>` : ""}
-
-        <div class="suggest ${sug.kind === "up" ? "up" : sug.kind === "cap" ? "cap" : ""}">
-          <span class="ico">${sug.kind === "up" ? "↑" : sug.kind === "cap" ? DUMBBELL_CAP_KG + "kg" : sug.kind === "new" ? "•" : "→"}</span>
-          <span>${esc(sug.text)}</span>
-        </div>
 
         <div class="track-wrap">
           <div class="track-head">
@@ -1212,9 +1394,6 @@ function renderStep(day) {
           </div>
         </div>
 
-        ${weightBox}
-        <div class="reps-lbl">${ex.unit === "seg" ? "Segundos por serie" : "Reps por serie (" + range + ")"}</div>
-        <div class="reps-grid">${repCells}</div>
         <div class="field full" style="margin-top:14px">
           <label>Notas del ejercicio</label>
           <textarea data-field="notas" placeholder="Sensaciones, técnica, RIR real…">${esc(saved ? saved.notas || "" : "")}</textarea>
@@ -1235,19 +1414,15 @@ function renderStep(day) {
           <a class="chip" href="${ex.video || videoUrl(ex.name)}" target="_blank" rel="noopener">${I.play} Vídeo</a>
           <button class="chip" data-info="how">Cómo se hace</button>
           <button class="chip" data-info="err">Errores a evitar</button>
+          <button class="chip" data-vidadd="1">${hasVideo(mediaKey(ex.id, ex.isVariant)) ? "Cambiar vídeo propio" : "Vídeo propio"}</button>
           ${ex.unit === "seg" ? `<button class="chip" data-timer="${ex.repHigh}">${I.clock} ${ex.repHigh} s</button>` : ""}
         </div>
         <div class="ejec collapse" id="exinfo"></div>
       </div>
-
-      <div class="step-nav">
-        ${i > 0 ? `<button class="btn btn-ghost" id="prev">Anterior</button>` : `<span></span>`}
-        <button class="btn btn-primary" id="next">${i === total - 1 ? "Hecho · Resumen" : "Hecho · Siguiente"}</button>
-      </div>
     </div>`, "days");
 
   bindCommon();
-  $("#exitsession").onclick = () => { clearDemoVidURL(); go("#/days"); };
+  $("#exitsession").onclick = () => { clearDemoVidURL(); teardownReel(); go("#/days"); };
   // autoguardado: vuelca cada dato al borrador local en el momento en que se teclea
   document.querySelectorAll('.exercise [data-field]').forEach((inp) => inp.addEventListener("input", () => captureStep(day)));
   document.querySelectorAll("[data-jump]").forEach((d) => d.onclick = () => { captureStep(day); draft.idx = +d.dataset.jump; draft.pendingCue = false; saveDraft(); render(); window.scrollTo(0, 0); });
@@ -1262,10 +1437,6 @@ function renderStep(day) {
   const zoom = $('[data-zoom]'); if (zoom) zoom.onclick = () => openDemoImage(ex.id, ex.isVariant);
   const vbtn = $('[data-vidadd]'); if (vbtn) vbtn.onclick = (e) => { e.stopPropagation(); pickVideoForKey(mediaKey(ex.id, ex.isVariant), () => render()); };
   if (hasVideo(mediaKey(ex.id, ex.isVariant))) hydrateDemoVideo(ex);
-  document.querySelectorAll("[data-fav]").forEach((b) => b.onclick = () => {
-    const id = b.dataset.fav; state.favorites[id] = !state.favorites[id]; if (!state.favorites[id]) delete state.favorites[id];
-    saveFavorites(); render();
-  });
   document.querySelectorAll("[data-swap]").forEach((b) => b.onclick = () => {
     captureStep(day);
     const id = b.dataset.swap;
@@ -2057,6 +2228,11 @@ function renderPrinciples() {
       </div>
       <button class="btn btn-ghost" id="govideos">Gestionar vídeos</button>
 
+      <div class="setrow">
+        <div class="set-txt"><b>Calentamiento y estiramientos</b><span>Tus vídeos de pre y post entreno, por día. Aparecen antes y después de la sesión (skippables).</span></div>
+      </div>
+      <button class="btn btn-ghost" id="gowarmup">Gestionar calentamiento</button>
+
       <div class="divider"><span class="label">Zona peligrosa</span><span class="rule"></span></div>
       <div class="setrow">
         <div class="set-txt"><b>Borrar todo</b><span>Elimina de forma permanente <b>todos</b> tus entrenos, fotos y medidas. No se puede deshacer. Exporta un backup antes si quieres conservar algo.</span></div>
@@ -2088,6 +2264,7 @@ function renderPrinciples() {
 
   // gestión de vídeos
   const gv = $("#govideos"); if (gv) gv.onclick = () => go("#/videos");
+  const gw = $("#gowarmup"); if (gw) gw.onclick = () => go("#/warmup");
 
   // exportar
   $("#expcsv").onclick = () => { if (!state.sessions.length) return toast("No hay entrenos que exportar", true); exportCSV(); };
@@ -2301,6 +2478,7 @@ async function boot() {
     if (user) {
       await loadSessions();
       refreshVideoKeys();
+      refreshSeqLists();
       if (!draft) { const d = loadDraft(); if (d && DAYS.some((x) => x.id === d.dayId)) draft = d; else clearDraft(); }
       loadProgress();      // en segundo plano
       applyReminders();
